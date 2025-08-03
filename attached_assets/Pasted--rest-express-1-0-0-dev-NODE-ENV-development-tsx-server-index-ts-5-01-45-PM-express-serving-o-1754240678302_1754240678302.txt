@@ -1,0 +1,43 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+5:01:45 PM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 10 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+5:01:50 PM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+5:01:53 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+express deprecated req.host: Use req.hostname instead file:/home/runner/workspace/node_modules/openid-client/build/passport.js:224:49
+5:04:01 PM [express] GET /api/login 302 in 3396ms
+file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345
+o?t(o):n(u)},"cb"),s=new r(function(o,u){n=o,t=u}).catch(o=>{throw Error.captureStackTrace(
+                                                                         ^
+
+error: null value in column "name" of relation "users" violates not-null constraint
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.upsertUser (/home/runner/workspace/server/storage.ts:81:20)
+    at async upsertUser (/home/runner/workspace/server/replitAuth.ts:60:3)
+    at async Strategy.verify (/home/runner/workspace/server/replitAuth.ts:83:5) {
+  length: 315,
+  severity: 'ERROR',
+  code: '23502',
+  detail: 'Failing row contains (20604009, natekar.vishal@gmail.com, null, null, null, 2025-08-03 17:04:18.57299, vishal, natekar, null, 2025-08-03 17:04:18.57299).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'users',
+  column: 'name',
+  dataType: undefined,
+  constraint: undefined,
+  file: 'execMain.c',
+  line: '2006',
+  routine: 'ExecConstraints'
+}
+
+Node.js v20.19.3
