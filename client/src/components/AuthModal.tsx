@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { ChartLine } from "lucide-react";
 import { signInWithGoogle } from "@/lib/auth";
+import { setDemoSession } from "@/lib/demoAuth";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthModalProps {
@@ -25,10 +26,17 @@ export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
         title: "Welcome!",
         description: "Successfully signed in to Personal Finance Hub",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Auth error:", error);
+      
+      let errorMessage = "Failed to sign in with Google. Please try again.";
+      if (error.message?.includes("Firebase is not configured")) {
+        errorMessage = "Google sign-in is not configured. Please contact support for assistance.";
+      }
+      
       toast({
         title: "Sign In Failed",
-        description: "Failed to sign in with Google. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -61,6 +69,31 @@ export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
               className="w-5 h-5 mr-3" 
             />
             {isLoading ? "Signing in..." : "Continue with Google"}
+          </Button>
+          
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">or</span>
+            </div>
+          </div>
+          
+          <Button
+            onClick={() => {
+              setDemoSession();
+              onSuccess();
+              onOpenChange(false);
+              toast({
+                title: "Demo Mode",
+                description: "Exploring Personal Finance Hub in demo mode",
+              });
+            }}
+            variant="outline"
+            className="w-full"
+          >
+            Try Demo Mode
           </Button>
           
           <p className="text-xs text-gray-500 text-center">

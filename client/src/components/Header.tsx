@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { signOutUser } from "@/lib/auth";
+import { isDemoMode, clearDemoSession } from "@/lib/demoAuth";
 import type { AuthUser } from "@/lib/auth";
 
 interface HeaderProps {
@@ -25,7 +26,12 @@ export function Header({ user, onRefresh, isRefreshing }: HeaderProps) {
 
   const handleSignOut = async () => {
     try {
-      await signOutUser();
+      if (isDemoMode()) {
+        clearDemoSession();
+        window.location.reload();
+      } else {
+        await signOutUser();
+      }
       toast({
         title: "Signed Out",
         description: "You have been successfully signed out",

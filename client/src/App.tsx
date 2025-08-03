@@ -8,6 +8,7 @@ import { Header } from "@/components/Header";
 import { AuthModal } from "@/components/AuthModal";
 import { Loading } from "@/components/ui/loading";
 import { getCurrentUser, onAuthStateChange } from "@/lib/auth";
+import { getDemoSession, isDemoMode, clearDemoSession } from "@/lib/demoAuth";
 import type { AuthUser } from "@/lib/auth";
 import Dashboard from "@/pages/dashboard";
 import Login from "@/pages/login";
@@ -38,6 +39,19 @@ function Router() {
 
   const checkAuthStatus = async () => {
     try {
+      // Check for demo session first
+      const demoUser = getDemoSession();
+      if (demoUser) {
+        setUser({
+          id: demoUser.id,
+          email: demoUser.email,
+          name: demoUser.name,
+          avatar: demoUser.avatar
+        });
+        return;
+      }
+
+      // Check Firebase authentication
       const user = await getCurrentUser();
       setUser(user);
     } catch (error) {
