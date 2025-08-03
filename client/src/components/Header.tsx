@@ -10,39 +10,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { signOutUser } from "@/lib/auth";
-import { isDemoMode, clearDemoSession } from "@/lib/demoAuth";
-import type { AuthUser } from "@/lib/auth";
 
 interface HeaderProps {
-  user: AuthUser;
-  onRefresh: () => void;
-  isRefreshing: boolean;
+  user: any;
 }
 
-export function Header({ user, onRefresh, isRefreshing }: HeaderProps) {
+export function Header({ user }: HeaderProps) {
   const [location] = useLocation();
   const { toast } = useToast();
 
-  const handleSignOut = async () => {
-    try {
-      if (isDemoMode()) {
-        clearDemoSession();
-        window.location.reload();
-      } else {
-        await signOutUser();
-      }
-      toast({
-        title: "Signed Out",
-        description: "You have been successfully signed out",
-      });
-    } catch (error) {
-      toast({
-        title: "Sign Out Failed",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive",
-      });
-    }
+  const handleSignOut = () => {
+    window.location.href = "/api/logout";
   };
 
   const navItems = [
@@ -82,23 +60,24 @@ export function Header({ user, onRefresh, isRefreshing }: HeaderProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={onRefresh}
-              disabled={isRefreshing}
+              onClick={() => window.location.reload()}
               className="text-gray-600 hover:text-gray-900"
             >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              <RefreshCw className="h-4 w-4" />
             </Button>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarImage src={user.profileImageUrl} alt={user.firstName || user.email} />
                     <AvatarFallback>
-                      {user.name.split(" ").map((n) => n[0]).join("")}
+                      {user.firstName ? user.firstName[0] : user.email[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium text-gray-700">{user.name}</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email}
+                  </span>
                   <ChevronDown className="h-4 w-4 text-gray-600" />
                 </Button>
               </DropdownMenuTrigger>

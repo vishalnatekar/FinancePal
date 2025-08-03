@@ -1,79 +1,16 @@
-import { useEffect, useState } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
-import { AuthModal } from "@/components/AuthModal";
 import { Loading } from "@/components/ui/loading";
-import { getCurrentUser, onAuthStateChange } from "@/lib/auth";
-import { getDemoSession, isDemoMode, clearDemoSession } from "@/lib/demoAuth";
-import type { AuthUser } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/dashboard";
-import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  useEffect(() => {
-    checkAuthStatus();
-    
-    // Listen for Firebase auth state changes
-    const unsubscribe = onAuthStateChange(async (firebaseUser) => {
-      if (firebaseUser) {
-        const user = await getCurrentUser();
-        setUser(user);
-      } else {
-        setUser(null);
-      }
-      setIsLoading(false);
-    });
-
-    return unsubscribe;
-  }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      // Check for demo session first
-      const demoUser = getDemoSession();
-      if (demoUser) {
-        setUser({
-          id: demoUser.id,
-          email: demoUser.email,
-          name: demoUser.name,
-          avatar: demoUser.avatar
-        });
-        return;
-      }
-
-      // Check Firebase authentication
-      const user = await getCurrentUser();
-      setUser(user);
-    } catch (error) {
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      // Invalidate all queries to refresh data
-      await queryClient.invalidateQueries();
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const handleAuthSuccess = () => {
-    checkAuthStatus();
-  };
+  const { user, isLoading, isAuthenticated } = useAuth();
 
   if (isLoading) {
     return (
@@ -83,68 +20,43 @@ function Router() {
     );
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return (
-      <>
-        <Switch>
-          <Route path="/login" component={Login} />
-          <Route>
-            <Login />
-          </Route>
-        </Switch>
-        <AuthModal
-          open={authModalOpen}
-          onOpenChange={setAuthModalOpen}
-          onSuccess={handleAuthSuccess}
-        />
-      </>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Personal Finance Hub</h1>
+          <p className="text-gray-600 mb-8">Securely manage your UK banking and finances</p>
+          <a 
+            href="/api/login"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Sign in with Replit
+          </a>
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} onRefresh={handleRefresh} isRefreshing={isRefreshing} />
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/transactions">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <h1 className="text-2xl font-bold">Transactions</h1>
-            <p className="text-gray-600">Transaction management coming soon...</p>
-          </div>
-        </Route>
-        <Route path="/budget">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <h1 className="text-2xl font-bold">Budget</h1>
-            <p className="text-gray-600">Budget management coming soon...</p>
-          </div>
-        </Route>
-        <Route path="/goals">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <h1 className="text-2xl font-bold">Goals</h1>
-            <p className="text-gray-600">Goal management coming soon...</p>
-          </div>
-        </Route>
-        <Route path="/accounts">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <h1 className="text-2xl font-bold">Accounts</h1>
-            <p className="text-gray-600">Account management coming soon...</p>
-          </div>
-        </Route>
-        <Route component={NotFound} />
-      </Switch>
+      <Header user={user} />
+      <main>
+        <Switch>
+          <Route path="/" component={Dashboard} />
+          <Route component={NotFound} />
+        </Switch>
+      </main>
     </div>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
         <Router />
+        <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
   );
 }
-
-export default App;
