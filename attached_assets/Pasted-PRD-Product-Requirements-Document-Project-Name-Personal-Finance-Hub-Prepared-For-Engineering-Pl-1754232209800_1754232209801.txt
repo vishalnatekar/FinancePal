@@ -1,0 +1,146 @@
+PRD
+
+Product Requirements Document
+Project Name: Personal Finance Hub Prepared For: Engineering / Platform Team (e.g., Replit) Author: [Your Name] Date: August 3, 2025 Primary User: Single-user (initially), finance-savvy individual Deployment Environment: Web application (hosted on Replit for MVP)
+
+1. Purpose & Vision
+Vision: Provide a single, secure dashboard that consolidates a user's financial accounts, computes net worth, categorizes transactions, and tracks budgets and financial goals.
+Purpose: Build an MVP personal finance aggregator that:
+* Connects to bank account data via Open Banking (through an aggregator like Nordigen / GoCardless Bank Account Data initially in sandbox).
+* Displays real-time net worth.
+* Automatically categorizes transactions with manual override.
+* Enables budgeting and goal tracking.
+* Ensures secure authentication and data handling.
+
+2. Success Criteria
+* Successful connection to at least one bank account data source (sandbox) and retrieval of account balances and transactions.
+* Accurate aggregated net worth calculation and visualization over time.
+* Automatic categorization of transactions with ability for user override.
+* Budget and goal definitions with progress visualization.
+* Secure single-user authentication.
+* Reliable periodic data refresh with graceful handling of failures/stale data.
+* Responsive UI showing summary dashboard, transaction detail, and goal status.
+
+3. Target Persona
+* Primary: A technically literate finance professional who wants full visibility and control over personal financial data without relying on third-party opaque tools.
+
+4. Key Features
+Core MVP Features
+1. Account Aggregation
+    * Integration with Open Banking data provider (Nordigen / GoCardless Bank Account Data sandbox to start).
+    * Fetch account metadata, balances, and recent transaction history.
+2. Net Worth Calculation
+    * Compute net worth as sum of asset balances minus liabilities.
+    * Show historical trend (time series) of net worth.
+3. Transaction Categorization
+    * Default rule-based categorization (e.g., keyword matching, merchant heuristics).
+    * UI for manual correction / tagging that influences future classification.
+4. Budgeting & Financial Goals
+    * Define monthly budgets per category.
+    * Define custom financial goals (e.g., save X by date Y).
+    * Visual indicators of progress and over/under performance.
+5. Authentication
+    * Secure login (single-user initially) with password and optional MFA.
+    * Session management using secure tokens.
+6. Dashboard
+    * Snapshot view: current net worth, recent transactions, budget health, goal progress.
+    * Drill-down views: transaction history, category breakdown, goal detail.
+7. Data Refresh
+    * Scheduled polling or webhook handling to keep account/transaction data up to date.
+    * Display data staleness and handle fetch failures gracefully.
+
+5. User Stories & Acceptance Criteria
+User Story 1: Connect bank account
+* As a user, I want to link my account so the system can fetch balances and transactions.
+    * Acceptance: Given valid sandbox credentials, initiating connection retrieves account list, balances, and last N days of transactions. Errors are surfaced clearly.
+User Story 2: View net worth
+* As a user, I want to see my net worth so I understand overall financial health.
+    * Acceptance: Dashboard shows aggregated net worth and a historical trend chart.
+User Story 3: Categorize transactions
+* As a user, I want transactions categorized automatically and be able to correct mistakes.
+    * Acceptance: Transactions are pre-populated with categories; corrections persist and influence future similar transactions.
+User Story 4: Track budgets
+* As a user, I want to set a monthly budget for a category and see how I’m tracking.
+    * Acceptance: Budget creation UI exists; dashboard indicates spent vs target with alerts for overspend.
+User Story 5: Track goals
+* As a user, I want to define a savings goal and see progress.
+    * Acceptance: Goal shows target, current amount, and time remaining.
+User Story 6: Secure login
+* As a user, I want to authenticate securely so my data is private.
+    * Acceptance: Login flow works, sessions expire appropriately, and credentials aren’t stored in cleartext.
+
+6. Technical Architecture
+* Frontend: React-based web UI (can be PWA-ready)
+* Backend: REST API (FastAPI in Python or Node.js/Express)
+* Data Source Adapter: Pluggable layer to integrate with Open Banking aggregators (initial: Nordigen / GoCardless sandbox)
+* Database: SQLite (initial MVP), with clear migration path to PostgreSQL
+* Authentication: JWT or equivalent token-based auth; password hashing; optional MFA
+* Categorization Engine: Rule definition store + matching logic
+* Scheduler: Internal scheduler to poll account data or consume webhooks
+* Secrets Management: Environment variables (API keys, auth secrets) stored securely
+Data Flow: User → Authenticated session → Backend triggers aggregator fetch → Transactions processed (categorized) → Stored → Frontend requests aggregated views → Dashboard renders.
+
+7. API Endpoints (sketch)
+* POST /auth/login – authenticate user
+* POST /auth/logout – invalidate session
+* GET /accounts – list linked accounts and balances
+* POST /accounts/connect – initiate new bank/account linkage
+* GET /transactions – list/filter transactions
+* POST /transactions/{id}/categorize – manual override
+* GET /networth – current and historical net worth
+* POST /budgets – create/update budget
+* GET /budgets – list budgets with status
+* POST /goals – create/update goal
+* GET /goals – list goals with progress
+
+8. Non-Functional Requirements
+* Security: HTTPS, encryption at rest for sensitive tokens, secure password storage, session expiration.
+* Privacy: Minimal PII storage; ability to reset/wipe data.
+* Reliability: Retries on external fetch failures; flag stale data.
+* Performance: Dashboard load <2s for typical dataset.
+* Maintainability: Clean separation of concerns (data adapter, categorizer, UI).
+* Scalability: Single-user initially, easy extension to multi-user by introducing user scoping.
+
+9. Metrics to Track
+* Number of connected accounts
+* Success/failure rate of data fetches
+* Categorization override frequency (proxy for accuracy)
+* Budget adherence (percentage of budgets within limit)
+* Goal completion %
+* Net worth change visibility latency (time from transaction ingestion to dashboard reflect)
+
+
+
+11. Risks & Mitigations
+* Aggregator outages or rate limits: Cache last known good data; exponential backoff.
+* Mis-categorization frustration: Easy manual correction; store overrides as learning input.
+* Security vulnerabilities: Audit token storage; rotate keys; enforce strong passwords.
+* Scope creep: Freeze core MVP features; defer advanced forecasting or multi-currency until after validation.
+
+12. Future Expansion (post-MVP)
+* Multi-user support
+* Investment account insights
+* Alerts & notifications
+* Currency conversion
+* Export (CSV/OFX)
+* Mobile native app using same backend (React Native / SwiftUI)
+* Plugin ecosystem (advisor sharing, tax tools)
+
+Deliverables to Expect
+* Deployed web dashboard (URL) with login
+* Connected sandbox bank account(s) showing balances and transactions
+* Net worth view with historical chart
+* Transaction view with categories and override capability
+* Budget and goal management interfaces
+* Secure backend API with documentation (OpenAPI spec preferred)
+* Basic logging/error visibility
+
+
+
+
+
+
+
+
+
+
