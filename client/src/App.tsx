@@ -23,14 +23,17 @@ function Router() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto px-4">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Personal Finance Hub</h1>
-          <p className="text-gray-600 mb-8">Securely manage your UK banking and finances</p>
+          <p className="text-gray-600 mb-6">Securely manage your UK banking and finances</p>
+          <p className="text-sm text-gray-500 mb-8">
+            Sign in with your Google account or Replit account to get started
+          </p>
           <a 
             href="/api/login"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
-            Sign in with Replit
+            Sign in
           </a>
         </div>
       </div>
