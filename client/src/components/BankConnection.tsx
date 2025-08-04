@@ -27,8 +27,8 @@ export function BankConnection() {
   // Connect to bank mutation
   const connectMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("/api/banking/connect");
-      return response;
+      const response = await apiRequest("GET", "/api/banking/connect");
+      return response.json();
     },
     onSuccess: (data: { authUrl: string }) => {
       setIsConnecting(true);
@@ -49,9 +49,8 @@ export function BankConnection() {
   // Sync banking data mutation
   const syncMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/banking/sync", {
-        method: "POST",
-      });
+      const response = await apiRequest("POST", "/api/banking/sync");
+      return response.json();
     },
     onSuccess: (data: { success: boolean; accountsSynced: number; transactionsSynced: number }) => {
       toast({
@@ -76,9 +75,8 @@ export function BankConnection() {
   // Disconnect banking mutation
   const disconnectMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/banking/disconnect", {
-        method: "DELETE",
-      });
+      const response = await apiRequest("DELETE", "/api/banking/disconnect");
+      return response.json();
     },
     onSuccess: () => {
       toast({
