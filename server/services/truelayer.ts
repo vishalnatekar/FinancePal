@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-// TrueLayer API configuration
-const TRUELAYER_BASE_URL = 'https://api.truelayer.com';
-const TRUELAYER_AUTH_URL = 'https://auth.truelayer.com';
+// TrueLayer API configuration - using sandbox for development
+const TRUELAYER_BASE_URL = process.env.NODE_ENV === 'production' ? 'https://api.truelayer.com' : 'https://api.truelayer-sandbox.com';
+const TRUELAYER_AUTH_URL = process.env.NODE_ENV === 'production' ? 'https://auth.truelayer.com' : 'https://auth.truelayer-sandbox.com';
 
 // TrueLayer data schemas
 const TrueLayerAccountSchema = z.object({
@@ -72,7 +72,13 @@ export class TrueLayerService {
       state: this.generateState(), // For security
     });
 
-    return `${TRUELAYER_AUTH_URL}?${params.toString()}`;
+    const authUrl = `${TRUELAYER_AUTH_URL}?${params.toString()}`;
+    console.log('Generated TrueLayer auth URL:', authUrl);
+    console.log('Redirect URI:', redirectUri);
+    console.log('Using environment:', process.env.NODE_ENV);
+    console.log('Auth base URL:', TRUELAYER_AUTH_URL);
+    
+    return authUrl;
   }
 
   /**
