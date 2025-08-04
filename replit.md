@@ -70,10 +70,11 @@ The backend exposes RESTful endpoints for:
 
 ## External Dependencies
 
-### Banking Integration Options
-- **Primary Option**: Nordigen (GoCardless) - FREE tier with easy registration
-- **Alternative 1**: Finexer - UK-focused, pay-as-you-use pricing
-- **Alternative 2**: Plaid - Developer-friendly with free tier
+### Banking Integration Options (Updated 2025)
+- **Primary Option**: Finexer - 14-day free trial, usage-based pricing, 99% UK bank coverage
+- **Alternative 1**: Yapily - Free unlimited sandbox testing, 2,000+ banks across UK & Europe
+- **Alternative 2**: TrueLayer - Market leader, 99% UK banks, used by major companies
+- **Note**: Nordigen's free tier discontinued after GoCardless acquisition
 - **Supported Banks**: All major UK banks including Lloyds, Barclays, HSBC, NatWest, Santander, Halifax, Nationwide, Monzo, Starling, Revolut
 - **Environment**: Sandbox mode ready with production capability
 - **Data Types**: Account balances, transaction history, and account metadata

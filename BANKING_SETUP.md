@@ -1,39 +1,41 @@
 # UK Banking Integration Setup Guide
 
-Your Personal Finance Hub is ready to integrate with UK banks through Open Banking APIs. Here are three easy alternatives to GoCardless enterprise:
+Your Personal Finance Hub is ready to integrate with UK banks through Open Banking APIs. Here are the **currently available** alternatives after Nordigen's free tier was discontinued:
 
-## Option 1: Nordigen (FREE) - Recommended for Starting
-
-**Why Nordigen:**
-- Completely FREE for basic account data access
-- Same company as GoCardless, but easier registration
-- Covers all major UK banks
-- Perfect for personal projects and prototypes
-
-**Setup Steps:**
-1. Visit [nordigen.com](https://nordigen.com)
-2. Create a free account (much simpler than GoCardless enterprise)
-3. Get your free API credentials
-4. Add these secrets to your Replit project:
-   - `NORDIGEN_SECRET_KEY` (your secret key)
-   - `NORDIGEN_SECRET_ID` (your secret ID)
-
-**Code already supports this** - just add the secrets and you're ready!
-
-## Option 2: Finexer - Best for UK-Only Apps
+## Option 1: Finexer - Best for Developers (RECOMMENDED)
 
 **Why Finexer:**
-- Built specifically for UK banking
-- Pay-as-you-use pricing (very affordable)
+- 14-day FREE trial with full access
+- Usage-based pricing (pay only for what you use)
 - 99% UK bank coverage
-- FCA authorized
+- Developer-friendly with quick integration (1-3 weeks)
+- Built specifically for UK startups
 
 **Setup Steps:**
 1. Visit [finexer.com](https://finexer.com)
-2. Sign up for developer account
-3. Get API credentials
+2. Sign up for free 14-day trial
+3. Get your API credentials
+4. Add these secrets to your Replit project:
+   - `FINEXER_API_KEY` (your API key)
+   - `FINEXER_SECRET_KEY` (your secret key)
+
+**Code already supports this** - just add the secrets and you're ready!
+
+## Option 2: Yapily - Best Free Testing
+
+**Why Yapily:**
+- Unlimited FREE sandbox testing
+- 2,000+ banks across UK & Europe
+- Comprehensive API documentation
+- White-label platform capabilities
+
+**Setup Steps:**
+1. Visit [yapily.com](https://yapily.com)
+2. Create developer account
+3. Access free sandbox environment
 4. Add to Replit secrets:
-   - `FINEXER_API_KEY`
+   - `YAPILY_API_KEY`
+   - `YAPILY_SECRET_KEY`
 
 ## Option 3: Plaid - Most Developer-Friendly
 
@@ -67,7 +69,7 @@ Once connected, your app will be able to:
 
 ## Next Steps
 
-1. **Choose a provider** (I recommend starting with Nordigen for free)
+1. **Choose a provider** (I recommend starting with Finexer's 14-day free trial)
 2. **Register and get API credentials**
 3. **Add the secrets to your Replit project**
 4. **Test with sandbox mode first**
@@ -77,12 +79,12 @@ Once connected, your app will be able to:
 
 If you encounter any issues setting up any of these providers, let me know and I can help you configure the integration or suggest the best option for your specific needs.
 
-## Comparison Summary
+## Updated Comparison Summary (2025)
 
 | Provider | Cost | UK Banks | Setup Difficulty | Best For |
 |----------|------|----------|------------------|----------|
-| **Nordigen** | FREE | All major | Very Easy | Getting started |
-| **Finexer** | Pay-per-use | 99% coverage | Easy | UK-focused apps |
-| **Plaid** | Free tier + paid | Major banks | Easy | Professional apps |
+| **Finexer** | 14-day free trial, then usage-based | 99% coverage | Easy | Startups & developers |
+| **Yapily** | Free sandbox, contact for pricing | 2,000+ banks | Easy | Extensive testing |
+| **TrueLayer** | Sandbox free, then monthly + usage | 99% UK banks | Medium | Established businesses |
 
-**Recommendation:** Start with Nordigen to test everything, then consider upgrading to Finexer or Plaid for production if you need additional features.
+**Updated Recommendation:** Start with Finexer's free trial to test everything with real data, then consider Yapily for extended testing or TrueLayer for production scale.
