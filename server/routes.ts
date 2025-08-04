@@ -343,7 +343,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TrueLayer Banking Integration Routes
   app.get("/api/banking/connect", isAuthenticated, async (req: any, res) => {
     try {
-      const redirectUri = `${req.protocol}://${req.get('host')}/api/banking/callback`;
+      // Use production domain for TrueLayer callback
+      const redirectUri = process.env.NODE_ENV === 'production' 
+        ? `${req.protocol}://${req.get('host')}/api/banking/callback`
+        : 'https://finance-pal-vishalnatekar.replit.app/api/banking/callback';
       const authUrl = trueLayerService.generateAuthUrl(redirectUri);
       res.json({ authUrl });
     } catch (error) {
@@ -361,7 +364,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Authorization code is required" });
       }
 
-      const redirectUri = `${req.protocol}://${req.get('host')}/api/banking/callback`;
+      // Use same redirect URI as in connect endpoint
+      const redirectUri = process.env.NODE_ENV === 'production' 
+        ? `${req.protocol}://${req.get('host')}/api/banking/callback`
+        : 'https://finance-pal-vishalnatekar.replit.app/api/banking/callback';
       const tokenData = await trueLayerService.exchangeCodeForToken(code as string, redirectUri);
 
       // Save the bank connection
