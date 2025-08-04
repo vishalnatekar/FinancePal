@@ -491,6 +491,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint for TrueLayer URL (remove in production)
+  app.get("/api/banking/debug", (req: any, res) => {
+    try {
+      const redirectUri = `${req.protocol}://${req.get('host')}/api/banking/callback`;
+      const authUrl = trueLayerService.generateAuthUrl(redirectUri);
+      res.json({ 
+        authUrl, 
+        redirectUri,
+        clientId: process.env.TRUELAYER_CLIENT_ID,
+        environment: process.env.NODE_ENV
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/banking/status", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
