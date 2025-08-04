@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
-// TrueLayer API configuration - using sandbox for development
-const TRUELAYER_BASE_URL = process.env.NODE_ENV === 'production' ? 'https://api.truelayer.com' : 'https://api.truelayer-sandbox.com';
-const TRUELAYER_AUTH_URL = process.env.NODE_ENV === 'production' ? 'https://auth.truelayer.com' : 'https://auth.truelayer-sandbox.com';
+// TrueLayer API configuration - force sandbox for development with sandbox client ID
+const isSandbox = process.env.TRUELAYER_CLIENT_ID?.includes('sandbox') || process.env.NODE_ENV !== 'production';
+const TRUELAYER_BASE_URL = isSandbox ? 'https://api.truelayer-sandbox.com' : 'https://api.truelayer.com';
+const TRUELAYER_AUTH_URL = isSandbox ? 'https://auth.truelayer-sandbox.com' : 'https://auth.truelayer.com';
 
 // TrueLayer data schemas
 const TrueLayerAccountSchema = z.object({
@@ -58,6 +59,12 @@ export class TrueLayerService {
     
     this.clientId = process.env.TRUELAYER_CLIENT_ID;
     this.clientSecret = process.env.TRUELAYER_CLIENT_SECRET;
+    
+    console.log('TrueLayer Service initialized:');
+    console.log('- Client ID:', this.clientId);
+    console.log('- Using sandbox:', isSandbox);
+    console.log('- Auth URL base:', TRUELAYER_AUTH_URL);
+    console.log('- API URL base:', TRUELAYER_BASE_URL);
   }
 
   /**
