@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-// TrueLayer API configuration - force sandbox for development with sandbox client ID
+// TrueLayer API configuration - auth URL is always production, but API URL differs for sandbox
 const isSandbox = process.env.TRUELAYER_CLIENT_ID?.includes('sandbox') || process.env.NODE_ENV !== 'production';
 const TRUELAYER_BASE_URL = isSandbox ? 'https://api.truelayer-sandbox.com' : 'https://api.truelayer.com';
-const TRUELAYER_AUTH_URL = isSandbox ? 'https://auth.truelayer-sandbox.com' : 'https://auth.truelayer.com';
+const TRUELAYER_AUTH_URL = 'https://auth.truelayer.com'; // Always use production auth URL even for sandbox
 
 // TrueLayer data schemas
 const TrueLayerAccountSchema = z.object({
@@ -79,7 +79,8 @@ export class TrueLayerService {
       state: this.generateState(), // For security
     });
 
-    const authUrl = `${TRUELAYER_AUTH_URL}?${params.toString()}`;
+    // Use the correct TrueLayer auth endpoint (no /auth path needed)
+    const authUrl = `${TRUELAYER_AUTH_URL}/?${params.toString()}`;
     console.log('Generated TrueLayer auth URL:', authUrl);
     console.log('Redirect URI:', redirectUri);
     console.log('Using environment:', process.env.NODE_ENV);

@@ -70,15 +70,16 @@ The backend exposes RESTful endpoints for:
 
 ## External Dependencies
 
-### Banking Integration Options (Updated 2025)
-- **Primary Option**: Finexer - 14-day free trial, usage-based pricing, 99% UK bank coverage
-- **Alternative 1**: Yapily - Free unlimited sandbox testing, 2,000+ banks across UK & Europe
-- **Alternative 2**: TrueLayer - Market leader, 99% UK banks, used by major companies
-- **Note**: Nordigen's free tier discontinued after GoCardless acquisition
+### Banking Integration (TrueLayer Implementation)
+- **Provider**: TrueLayer - Market leader with 99% UK bank coverage
+- **Current Status**: Sandbox integration implemented and functional
+- **Client ID**: sandbox-financepal-415037 (configured for development)
+- **Redirect URI**: https://finance-pal-vishalnatekar.replit.app/api/banking/callback
+- **Auth Flow**: OAuth 2.0 with PKCE support for secure bank connections
 - **Supported Banks**: All major UK banks including Lloyds, Barclays, HSBC, NatWest, Santander, Halifax, Nationwide, Monzo, Starling, Revolut
-- **Environment**: Sandbox mode ready with production capability
 - **Data Types**: Account balances, transaction history, and account metadata
 - **Compliance**: FCA regulated Open Banking standards and PSD2
+- **Setup Note**: Redirect URI must be whitelisted in TrueLayer Console App Settings
 
 ### Authentication Services
 - **Firebase Authentication**: Google OAuth integration for secure user authentication
