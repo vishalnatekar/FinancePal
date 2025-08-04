@@ -70,10 +70,12 @@ The backend exposes RESTful endpoints for:
 
 ## External Dependencies
 
-### Banking Integration
-- **Open Banking Provider**: GoCardless Bank Account Data API (UK focus)
-- **Supported Banks**: Major UK banks including Lloyds, Barclays, HSBC, NatWest, Santander, Halifax, Nationwide, Monzo, Starling, Revolut
-- **Environment**: Initially configured for sandbox mode with production readiness
+### Banking Integration Options
+- **Primary Option**: Nordigen (GoCardless) - FREE tier with easy registration
+- **Alternative 1**: Finexer - UK-focused, pay-as-you-use pricing
+- **Alternative 2**: Plaid - Developer-friendly with free tier
+- **Supported Banks**: All major UK banks including Lloyds, Barclays, HSBC, NatWest, Santander, Halifax, Nationwide, Monzo, Starling, Revolut
+- **Environment**: Sandbox mode ready with production capability
 - **Data Types**: Account balances, transaction history, and account metadata
 - **Compliance**: FCA regulated Open Banking standards and PSD2
 
