@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowUp, ArrowDown, University, CreditCard, Plus, Edit, TrendingUp, Clock } from "lucide-react";
 import { NetWorthChart } from "@/components/NetWorthChart";
 import { CategoryModal } from "@/components/CategoryModal";
+import { BankConnection } from "@/components/BankConnection";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -239,8 +240,10 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Budget & Goals */}
+        {/* Bank Connection & Budget & Goals */}
         <div className="space-y-6">
+          {/* Bank Connection */}
+          <BankConnection />
           {/* Budget Overview */}
           <Card>
             <CardHeader>

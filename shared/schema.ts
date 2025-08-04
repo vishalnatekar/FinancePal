@@ -26,6 +26,20 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// TrueLayer bank connections for users
+export const bankConnections = pgTable("bank_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  tokenType: text("token_type").notNull().default("Bearer"),
+  expiresAt: timestamp("expires_at").notNull(),
+  scope: text("scope").notNull(),
+  isActive: boolean("is_active").default(true),
+  lastSynced: timestamp("last_synced"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const accounts = pgTable("accounts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -95,6 +109,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   budgets: many(budgets),
   goals: many(goals),
   netWorthHistory: many(netWorthHistory),
+  bankConnections: many(bankConnections),
+}));
+
+export const bankConnectionsRelations = relations(bankConnections, ({ one }) => ({
+  user: one(users, {
+    fields: [bankConnections.userId],
+    references: [users.id],
+  }),
 }));
 
 export const accountsRelations = relations(accounts, ({ one, many }) => ({
@@ -164,6 +186,11 @@ export const insertNetWorthHistorySchema = createInsertSchema(netWorthHistory).o
   createdAt: true,
 });
 
+export const insertBankConnectionSchema = createInsertSchema(bankConnections).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -183,3 +210,6 @@ export type InsertGoal = z.infer<typeof insertGoalSchema>;
 
 export type NetWorthHistory = typeof netWorthHistory.$inferSelect;
 export type InsertNetWorthHistory = z.infer<typeof insertNetWorthHistorySchema>;
+
+export type BankConnection = typeof bankConnections.$inferSelect;
+export type InsertBankConnection = z.infer<typeof insertBankConnectionSchema>;

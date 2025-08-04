@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { openBankingService } from "./services/openBanking";
 import { categorizeTransaction } from "./services/categorization";
-import { insertAccountSchema, insertTransactionSchema, insertBudgetSchema, insertGoalSchema } from "@shared/schema";
+import { insertAccountSchema, insertTransactionSchema, insertBudgetSchema, insertGoalSchema, insertBankConnectionSchema } from "@shared/schema";
+import { trueLayerService } from "./services/truelayer";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -336,6 +337,184 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get category analytics error:", error);
       res.status(500).json({ message: "Failed to get category analytics" });
+    }
+  });
+
+  // TrueLayer Banking Integration Routes
+  app.get("/api/banking/connect", isAuthenticated, async (req: any, res) => {
+    try {
+      const redirectUri = `${req.protocol}://${req.get('host')}/api/banking/callback`;
+      const authUrl = trueLayerService.generateAuthUrl(redirectUri);
+      res.json({ authUrl });
+    } catch (error) {
+      console.error("Generate auth URL error:", error);
+      res.status(500).json({ message: "Failed to generate authorization URL" });
+    }
+  });
+
+  app.get("/api/banking/callback", isAuthenticated, async (req: any, res) => {
+    try {
+      const { code } = req.query;
+      const userId = req.user.claims.sub;
+      
+      if (!code) {
+        return res.status(400).json({ message: "Authorization code is required" });
+      }
+
+      const redirectUri = `${req.protocol}://${req.get('host')}/api/banking/callback`;
+      const tokenData = await trueLayerService.exchangeCodeForToken(code as string, redirectUri);
+
+      // Save the bank connection
+      const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+      await storage.createBankConnection({
+        userId,
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        tokenType: tokenData.token_type,
+        expiresAt,
+        scope: 'accounts balance transactions',
+      });
+
+      // Redirect to frontend with success
+      res.redirect('/?connection=success');
+    } catch (error) {
+      console.error("Banking callback error:", error);
+      res.redirect('/?connection=error');
+    }
+  });
+
+  app.post("/api/banking/sync", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get active bank connection
+      const bankConnection = await storage.getActiveBankConnection(userId);
+      if (!bankConnection) {
+        return res.status(404).json({ message: "No active bank connection found. Please connect your bank first." });
+      }
+
+      // Check if token needs refresh
+      let accessToken = bankConnection.accessToken;
+      if (new Date() >= bankConnection.expiresAt) {
+        const refreshedTokens = await trueLayerService.refreshToken(bankConnection.refreshToken);
+        const newExpiresAt = new Date(Date.now() + refreshedTokens.expires_in * 1000);
+        
+        await storage.updateBankConnection(bankConnection.id, {
+          accessToken: refreshedTokens.access_token,
+          refreshToken: refreshedTokens.refresh_token,
+          expiresAt: newExpiresAt,
+        });
+        
+        accessToken = refreshedTokens.access_token;
+      }
+
+      // Fetch accounts from TrueLayer
+      const trueLayerAccounts = await trueLayerService.getAccounts(accessToken);
+      let syncedAccountsCount = 0;
+      let syncedTransactionsCount = 0;
+
+      for (const tlAccount of trueLayerAccounts) {
+        // Check if account already exists
+        let account = await storage.getAccountByExternalId(tlAccount.account_id);
+        
+        if (!account) {
+          // Create new account
+          account = await storage.createAccount({
+            userId,
+            externalId: tlAccount.account_id,
+            name: tlAccount.display_name,
+            type: tlAccount.account_type.toLowerCase(),
+            currency: tlAccount.currency,
+            institutionName: tlAccount.provider.display_name,
+            accountNumber: tlAccount.account_number.number || 'Hidden',
+            balance: '0', // Will be updated below
+          });
+          syncedAccountsCount++;
+        }
+
+        // Get current balance
+        const balance = await trueLayerService.getAccountBalance(accessToken, tlAccount.account_id);
+        await storage.updateAccount(account.id, {
+          balance: balance.current.toString(),
+          lastSynced: new Date(),
+        });
+
+        // Get transactions (last 30 days)
+        const fromDate = new Date();
+        fromDate.setDate(fromDate.getDate() - 30);
+        const transactions = await trueLayerService.getAccountTransactions(
+          accessToken,
+          tlAccount.account_id,
+          fromDate.toISOString().split('T')[0]
+        );
+
+        // Save transactions
+        for (const tlTransaction of transactions) {
+          const existingTransaction = await storage.getTransactionByExternalId(tlTransaction.transaction_id);
+          
+          if (!existingTransaction) {
+            const category = trueLayerService.categorizeTransaction(tlTransaction);
+            
+            await storage.createTransaction({
+              accountId: account.id,
+              externalId: tlTransaction.transaction_id,
+              amount: tlTransaction.amount.toString(),
+              description: tlTransaction.description,
+              date: new Date(tlTransaction.timestamp),
+              category,
+              categoryConfidence: '0.8', // High confidence from TrueLayer categorization
+              metadata: {
+                merchantName: tlTransaction.merchant_name,
+                transactionType: tlTransaction.transaction_type,
+                trueLayerCategory: tlTransaction.transaction_category,
+              },
+            });
+            syncedTransactionsCount++;
+          }
+        }
+      }
+
+      // Update last sync time
+      await storage.updateBankConnection(bankConnection.id, {
+        lastSynced: new Date(),
+      });
+
+      res.json({
+        success: true,
+        accountsSynced: syncedAccountsCount,
+        transactionsSynced: syncedTransactionsCount,
+        totalAccounts: trueLayerAccounts.length,
+      });
+    } catch (error) {
+      console.error("Banking sync error:", error);
+      res.status(500).json({ message: "Failed to sync banking data" });
+    }
+  });
+
+  app.get("/api/banking/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const bankConnection = await storage.getActiveBankConnection(userId);
+      
+      res.json({
+        connected: !!bankConnection,
+        lastSynced: bankConnection?.lastSynced || null,
+        accountsCount: bankConnection ? await storage.getAccountCountForUser(userId) : 0,
+      });
+    } catch (error) {
+      console.error("Banking status error:", error);
+      res.status(500).json({ message: "Failed to get banking status" });
+    }
+  });
+
+  app.delete("/api/banking/disconnect", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deactivateBankConnection(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Banking disconnect error:", error);
+      res.status(500).json({ message: "Failed to disconnect banking" });
     }
   });
 

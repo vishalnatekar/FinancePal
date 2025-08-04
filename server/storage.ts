@@ -5,6 +5,7 @@ import {
   budgets,
   goals,
   netWorthHistory,
+  bankConnections,
   type User,
   type InsertUser,
   type UpsertUser,
@@ -18,6 +19,8 @@ import {
   type InsertGoal,
   type NetWorthHistory,
   type InsertNetWorthHistory,
+  type BankConnection,
+  type InsertBankConnection,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
@@ -68,6 +71,15 @@ export interface IStorage {
   // Analytics
   getBudgetSpending(userId: string, category: string, startDate: Date, endDate: Date): Promise<number>;
   getCategorizedTransactions(userId: string, startDate: Date, endDate: Date): Promise<any>;
+
+  // Bank Connection operations
+  createBankConnection(connection: InsertBankConnection): Promise<BankConnection>;
+  getActiveBankConnection(userId: string): Promise<BankConnection | undefined>;
+  updateBankConnection(id: string, connection: Partial<InsertBankConnection>): Promise<BankConnection>;
+  deactivateBankConnection(userId: string): Promise<void>;
+  getAccountByExternalId(externalId: string): Promise<Account | undefined>;
+  getTransactionByExternalId(externalId: string): Promise<Transaction | undefined>;
+  getAccountCountForUser(userId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -332,6 +344,66 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .groupBy(transactions.category);
+  }
+
+  // Bank Connection operations
+  async createBankConnection(connection: InsertBankConnection): Promise<BankConnection> {
+    const [created] = await db
+      .insert(bankConnections)
+      .values(connection)
+      .returning();
+    return created;
+  }
+
+  async getActiveBankConnection(userId: string): Promise<BankConnection | undefined> {
+    const [connection] = await db
+      .select()
+      .from(bankConnections)
+      .where(and(eq(bankConnections.userId, userId), eq(bankConnections.isActive, true)))
+      .limit(1);
+    return connection || undefined;
+  }
+
+  async updateBankConnection(id: string, connection: Partial<InsertBankConnection>): Promise<BankConnection> {
+    const [updated] = await db
+      .update(bankConnections)
+      .set(connection)
+      .where(eq(bankConnections.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deactivateBankConnection(userId: string): Promise<void> {
+    await db
+      .update(bankConnections)
+      .set({ isActive: false })
+      .where(eq(bankConnections.userId, userId));
+  }
+
+  async getAccountByExternalId(externalId: string): Promise<Account | undefined> {
+    const [account] = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.externalId, externalId))
+      .limit(1);
+    return account || undefined;
+  }
+
+  async getTransactionByExternalId(externalId: string): Promise<Transaction | undefined> {
+    const [transaction] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.externalId, externalId))
+      .limit(1);
+    return transaction || undefined;
+  }
+
+  async getAccountCountForUser(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<string>`COUNT(*)` })
+      .from(accounts)
+      .where(eq(accounts.userId, userId));
+    return parseInt(result[0]?.count || "0");
   }
 }
 
