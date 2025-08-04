@@ -11,6 +11,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Banking callback route (must be before other protected routes)
+  app.get("/api/banking/callback", async (req: any, res) => {
+    try {
+      const { code, state } = req.query;
+      
+      if (!code) {
+        return res.redirect('/?connection=error&reason=missing_code');
+      }
+
+      // Check if user is authenticated, if not redirect to login
+      if (!req.isAuthenticated() || !req.user?.claims?.sub) {
+        // Store the callback URL to redirect after login
+        const callbackUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+        return res.redirect(`/api/login?returnTo=${encodeURIComponent(callbackUrl)}`);
+      }
+
+      const userId = req.user.claims.sub;
+
+      // Use same redirect URI as in connect endpoint
+      const redirectUri = process.env.NODE_ENV === 'production' 
+        ? `${req.protocol}://${req.get('host')}/api/banking/callback`
+        : 'https://finance-pal-vishalnatekar.replit.app/api/banking/callback';
+      const tokenData = await trueLayerService.exchangeCodeForToken(code as string, redirectUri);
+
+      // Save the bank connection
+      const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+      await storage.createBankConnection({
+        userId,
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        tokenType: tokenData.token_type,
+        expiresAt,
+        scope: 'accounts balance transactions',
+      });
+
+      // Redirect to frontend with success
+      res.redirect('/?connection=success');
+    } catch (error) {
+      console.error("Banking callback error:", error);
+      res.redirect('/?connection=error');
+    }
+  });
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
@@ -352,40 +395,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Generate auth URL error:", error);
       res.status(500).json({ message: "Failed to generate authorization URL" });
-    }
-  });
-
-  app.get("/api/banking/callback", isAuthenticated, async (req: any, res) => {
-    try {
-      const { code } = req.query;
-      const userId = req.user.claims.sub;
-      
-      if (!code) {
-        return res.status(400).json({ message: "Authorization code is required" });
-      }
-
-      // Use same redirect URI as in connect endpoint
-      const redirectUri = process.env.NODE_ENV === 'production' 
-        ? `${req.protocol}://${req.get('host')}/api/banking/callback`
-        : 'https://finance-pal-vishalnatekar.replit.app/api/banking/callback';
-      const tokenData = await trueLayerService.exchangeCodeForToken(code as string, redirectUri);
-
-      // Save the bank connection
-      const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
-      await storage.createBankConnection({
-        userId,
-        accessToken: tokenData.access_token,
-        refreshToken: tokenData.refresh_token,
-        tokenType: tokenData.token_type,
-        expiresAt,
-        scope: 'accounts balance transactions',
-      });
-
-      // Redirect to frontend with success
-      res.redirect('/?connection=success');
-    } catch (error) {
-      console.error("Banking callback error:", error);
-      res.redirect('/?connection=error');
     }
   });
 
