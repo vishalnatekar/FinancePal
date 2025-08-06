@@ -28,7 +28,7 @@ export function getSession() {
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
     createTableIfMissing: false,
-    ttl: sessionTtl,
+    ttl: sessionTtl / 1000, // Convert to seconds for PostgreSQL store
     tableName: "sessions",
   });
   return session({
@@ -36,9 +36,11 @@ export function getSession() {
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    name: 'finance.session', // Custom session name
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production', // Only secure in production
+      sameSite: 'lax', // Allow cross-origin for callbacks
       maxAge: sessionTtl,
     },
   });

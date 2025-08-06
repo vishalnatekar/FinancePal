@@ -29,6 +29,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user is authenticated, if not redirect to login
       if (!req.isAuthenticated() || !req.user?.claims?.sub) {
         console.log('❌ User not authenticated, redirecting to login');
+        console.log('Session ID:', req.sessionID);
+        console.log('Session data:', req.session);
         // Store the callback URL to redirect after login
         const callbackUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
         return res.redirect(`/api/login?returnTo=${encodeURIComponent(callbackUrl)}`);
@@ -162,7 +164,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ 
       message: "Callback endpoint is accessible",
       authenticated: req.isAuthenticated(),
-      userId: req.user?.claims?.sub || null
+      userId: req.user?.claims?.sub || null,
+      sessionId: req.sessionID,
+      hasSession: !!req.session
+    });
+  });
+
+  // Debug endpoint for session info
+  app.get("/api/debug/session", (req: any, res) => {
+    res.json({
+      authenticated: req.isAuthenticated(),
+      sessionId: req.sessionID,
+      userId: req.user?.claims?.sub || null,
+      sessionExists: !!req.session,
+      userExists: !!req.user
     });
   });
 
