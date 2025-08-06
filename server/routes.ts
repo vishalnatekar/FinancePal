@@ -373,8 +373,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const days = req.query.days ? parseInt(req.query.days) : 30;
-      const netWorthHistory = await storage.getNetWorthHistoryByUserId(userId, days);
-      res.json(netWorthHistory);
+      
+      // Get net worth history
+      const history = await storage.getNetWorthHistoryByUserId(userId, days);
+      
+      // Get the latest record
+      const current = await storage.getLatestNetWorth(userId);
+      
+      // Return in the format expected by the dashboard
+      res.json({
+        current: current || null,
+        history: history || []
+      });
     } catch (error) {
       console.error("Get net worth error:", error);
       res.status(500).json({ message: "Failed to get net worth history" });
@@ -389,6 +399,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get latest net worth error:", error);
       res.status(500).json({ message: "Failed to get latest net worth" });
+    }
+  });
+
+  app.post("/api/net-worth/calculate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get all accounts for the user
+      const accounts = await storage.getAccountsByUserId(userId);
+      
+      // Calculate total net worth
+      let totalAssets = 0;
+      let totalLiabilities = 0;
+      
+      for (const account of accounts) {
+        const balance = parseFloat(account.balance);
+        if (account.type === 'credit_card' || account.type === 'credit') {
+          totalLiabilities += Math.abs(balance); // Credit cards are liabilities
+        } else {
+          totalAssets += balance;
+        }
+      }
+      
+      const netWorth = totalAssets - totalLiabilities;
+      
+      // Save the calculation to history
+      const newRecord = await storage.createNetWorthHistory({
+        userId,
+        totalAssets: totalAssets.toString(),
+        totalLiabilities: totalLiabilities.toString(),
+        netWorth: netWorth.toString(),
+        date: new Date(),
+      });
+      
+      res.json(newRecord);
+    } catch (error) {
+      console.error("Calculate net worth error:", error);
+      res.status(500).json({ message: "Failed to calculate net worth" });
     }
   });
 

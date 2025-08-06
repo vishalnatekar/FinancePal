@@ -7,6 +7,10 @@ import { Header } from "@/components/Header";
 import { Loading } from "@/components/ui/loading";
 import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/dashboard";
+import TransactionsPage from "@/pages/transactions";
+import BudgetPage from "@/pages/budget";
+import GoalsPage from "@/pages/goals";
+import AccountsPage from "@/pages/accounts";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -46,6 +50,10 @@ function Router() {
       <main>
         <Switch>
           <Route path="/" component={Dashboard} />
+          <Route path="/transactions" component={TransactionsPage} />
+          <Route path="/budget" component={BudgetPage} />
+          <Route path="/goals" component={GoalsPage} />
+          <Route path="/accounts" component={AccountsPage} />
           <Route component={NotFound} />
         </Switch>
       </main>

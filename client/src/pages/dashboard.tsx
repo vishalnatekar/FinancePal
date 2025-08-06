@@ -52,17 +52,17 @@ export default function Dashboard() {
     current: NetWorthHistory | null;
     history: NetWorthHistory[];
   }>({
-    queryKey: ["/api/networth"],
+    queryKey: ["/api/net-worth"],
   });
 
   // Calculate net worth mutation
   const calculateNetWorthMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/networth/calculate", {});
+      const response = await apiRequest("POST", "/api/net-worth/calculate", {});
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/networth"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/net-worth"] });
       toast({
         title: "Net Worth Updated",
         description: "Your net worth has been recalculated",
