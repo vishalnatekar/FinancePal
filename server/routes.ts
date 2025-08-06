@@ -14,26 +14,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Banking callback route (must be before other protected routes)
   app.get("/api/banking/callback", async (req: any, res) => {
     try {
+      console.log('=== BANKING CALLBACK START ===');
+      console.log('Query params:', req.query);
+      console.log('User authenticated:', req.isAuthenticated());
+      console.log('User claims:', req.user?.claims);
+      
       const { code, state } = req.query;
       
       if (!code) {
+        console.log('❌ No authorization code in callback');
         return res.redirect('/?connection=error&reason=missing_code');
       }
 
       // Check if user is authenticated, if not redirect to login
       if (!req.isAuthenticated() || !req.user?.claims?.sub) {
+        console.log('❌ User not authenticated, redirecting to login');
         // Store the callback URL to redirect after login
         const callbackUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
         return res.redirect(`/api/login?returnTo=${encodeURIComponent(callbackUrl)}`);
       }
 
       const userId = req.user.claims.sub;
+      console.log('✅ User ID:', userId);
 
       // Use same redirect URI as in connect endpoint
       const redirectUri = process.env.NODE_ENV === 'production' 
         ? `${req.protocol}://${req.get('host')}/api/banking/callback`
         : 'https://finance-pal-vishalnatekar.replit.app/api/banking/callback';
+      
+      console.log('🔄 Exchanging code for token...');
+      console.log('Redirect URI:', redirectUri);
       const tokenData = await trueLayerService.exchangeCodeForToken(code as string, redirectUri);
+      console.log('✅ Token exchange successful:', {
+        hasAccessToken: !!tokenData.access_token,
+        hasRefreshToken: !!tokenData.refresh_token,
+        expiresIn: tokenData.expires_in
+      });
 
       // Save the bank connection
       const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
@@ -121,12 +137,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastSynced: new Date(),
         });
 
-        console.log(`Auto sync completed: ${syncedAccountsCount} accounts, ${syncedTransactionsCount} transactions`);
+        console.log(`✅ Auto sync completed: ${syncedAccountsCount} accounts, ${syncedTransactionsCount} transactions`);
       } catch (syncError) {
-        console.error('Auto sync failed, but bank connection saved:', syncError);
+        console.error('❌ Auto sync failed, but bank connection saved:', syncError);
         // Don't fail the entire callback if sync fails
       }
 
+      console.log('=== BANKING CALLBACK END ===');
       // Redirect to frontend with success
       res.redirect('/?connection=success');
     } catch (error) {
