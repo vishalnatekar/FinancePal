@@ -130,23 +130,43 @@ export default function Dashboard() {
       <Card className="mb-8">
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Net Worth</h2>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Clock className="h-4 w-4" />
-              <span>
-                {currentNetWorth && currentNetWorth.createdAt
-                  ? `Updated ${format(new Date(currentNetWorth.createdAt), "MMM d, h:mm a")}`
-                  : "No data available"
-                }
-              </span>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Net Worth</h2>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                <Clock className="h-4 w-4" />
+                <span>
+                  {currentNetWorth && currentNetWorth.createdAt
+                    ? `Updated ${format(new Date(currentNetWorth.createdAt), "MMM d, h:mm a")}`
+                    : "No data available"
+                  }
+                </span>
+              </div>
+              <Button
+                onClick={() => calculateNetWorthMutation.mutate()}
+                disabled={calculateNetWorthMutation.isPending}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                {calculateNetWorthMutation.isPending ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Calculating...
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="h-4 w-4" />
+                    Calculate Net Worth
+                  </>
+                )}
+              </Button>
             </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center md:text-left">
               <p className="text-sm text-gray-600 mb-1">Current Net Worth</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {currentNetWorth ? formatCurrency(currentNetWorth.netWorth) : "$0.00"}
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                {currentNetWorth ? formatCurrency(currentNetWorth.netWorth) : "£0.00"}
               </p>
               {netWorthHistory.length > 1 && (
                 <div className="flex items-center justify-center md:justify-start mt-2">
@@ -160,15 +180,15 @@ export default function Dashboard() {
             
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-1">Total Assets</p>
-              <p className="text-xl font-semibold text-gray-900">
-                {currentNetWorth ? formatCurrency(currentNetWorth.totalAssets) : "$0.00"}
+              <p className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                {currentNetWorth ? formatCurrency(currentNetWorth.totalAssets) : "£0.00"}
               </p>
             </div>
             
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-1">Total Liabilities</p>
-              <p className="text-xl font-semibold text-gray-900">
-                {currentNetWorth ? formatCurrency(currentNetWorth.totalLiabilities) : "$0.00"}
+              <p className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                {currentNetWorth ? formatCurrency(currentNetWorth.totalLiabilities) : "£0.00"}
               </p>
             </div>
           </div>
