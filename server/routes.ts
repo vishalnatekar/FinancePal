@@ -651,12 +651,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/banking/status", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const bankConnection = await storage.getActiveBankConnection(userId);
+      const bankConnections = await storage.getAllActiveBankConnections(userId);
+      const accounts = await storage.getAccountsByUserId(userId);
+      
+      // Get unique institutions from accounts
+      const institutions = [...new Set(accounts.map(acc => acc.institutionName).filter(Boolean))];
+      
+      // Find the most recent sync time across all connections
+      const lastSynced = bankConnections
+        .map(conn => conn.lastSynced)
+        .filter(Boolean)
+        .sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0];
       
       res.json({
-        connected: !!bankConnection,
-        lastSynced: bankConnection?.lastSynced || null,
-        accountsCount: bankConnection ? await storage.getAccountCountForUser(userId) : 0,
+        connected: bankConnections.length > 0,
+        connections: bankConnections.map(conn => ({
+          id: conn.id,
+          lastSynced: conn.lastSynced,
+          createdAt: conn.createdAt,
+        })),
+        institutions,
+        lastSynced: lastSynced || null,
+        accountsCount: accounts.length,
       });
     } catch (error) {
       console.error("Banking status error:", error);
@@ -672,6 +688,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Banking disconnect error:", error);
       res.status(500).json({ message: "Failed to disconnect banking" });
+    }
+  });
+
+  app.delete("/api/banking/disconnect/:connectionId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { connectionId } = req.params;
+      await storage.deactivateSpecificBankConnection(connectionId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Banking disconnect specific error:", error);
+      res.status(500).json({ message: "Failed to disconnect specific banking connection" });
     }
   });
 

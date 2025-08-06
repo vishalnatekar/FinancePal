@@ -6,10 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Building2, RefreshCw, Unlink, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { Building2, RefreshCw, Unlink, CheckCircle, AlertCircle, Clock, Plus, Trash2 } from "lucide-react";
 
 interface BankingStatus {
   connected: boolean;
+  connections: Array<{
+    id: string;
+    lastSynced: string | null;
+    createdAt: string;
+  }>;
+  institutions: string[];
   lastSynced: string | null;
   accountsCount: number;
 }
@@ -72,8 +78,8 @@ export function BankConnection() {
     },
   });
 
-  // Disconnect banking mutation
-  const disconnectMutation = useMutation({
+  // Disconnect all banking connections mutation
+  const disconnectAllMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("DELETE", "/api/banking/disconnect");
       return response.json();
@@ -81,7 +87,7 @@ export function BankConnection() {
     onSuccess: () => {
       toast({
         title: "Disconnected",
-        description: "Successfully disconnected from TrueLayer.",
+        description: "Successfully disconnected all bank connections.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/banking/status"] });
       queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
@@ -92,6 +98,31 @@ export function BankConnection() {
       toast({
         title: "Disconnect Failed",
         description: "Failed to disconnect. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Disconnect specific banking connection mutation
+  const disconnectSpecificMutation = useMutation({
+    mutationFn: async (connectionId: string) => {
+      const response = await apiRequest("DELETE", `/api/banking/disconnect/${connectionId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Connection Removed",
+        description: "Successfully removed bank connection.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/banking/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+    },
+    onError: (error) => {
+      console.error("Disconnect specific error:", error);
+      toast({
+        title: "Disconnect Failed",
+        description: "Failed to remove connection. Please try again.",
         variant: "destructive",
       });
     },
@@ -130,15 +161,60 @@ export function BankConnection() {
       <CardContent className="space-y-4">
         {status?.connected ? (
           <div className="space-y-4">
-            {/* Connection Status */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-sm font-medium">Connected to TrueLayer</span>
+            {/* Connected Banks */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span className="text-sm font-medium">Connected Banks ({status?.institutions?.length || 0})</span>
+                </div>
+                <Badge variant="secondary" className="bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                  Active
+                </Badge>
               </div>
-              <Badge variant="secondary" className="bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">
-                Active
-              </Badge>
+
+              {/* Bank List */}
+              <div className="space-y-2">
+                {status?.institutions?.map((institution, index) => (
+                  <div key={institution} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm font-medium">{institution}</span>
+                    </div>
+                    {(status?.connections?.length || 0) > 1 && (
+                      <Button
+                        onClick={() => disconnectSpecificMutation.mutate(status?.connections?.[index]?.id || '')}
+                        disabled={disconnectSpecificMutation.isPending}
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Bank Button */}
+              <Button
+                onClick={() => connectMutation.mutate()}
+                disabled={connectMutation.isPending || isConnecting}
+                variant="outline"
+                className="w-full border-dashed"
+              >
+                {connectMutation.isPending || isConnecting ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Connect Another Bank
+                  </>
+                )}
+              </Button>
             </div>
 
             {/* Account Stats */}
@@ -148,7 +224,7 @@ export function BankConnection() {
                   {status.accountsCount}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Connected Accounts
+                  Total Accounts
                 </div>
               </div>
               <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -187,18 +263,18 @@ export function BankConnection() {
                 ) : (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Sync Now
+                    Sync All Banks
                   </>
                 )}
               </Button>
               <Button
-                onClick={() => disconnectMutation.mutate()}
-                disabled={disconnectMutation.isPending}
+                onClick={() => disconnectAllMutation.mutate()}
+                disabled={disconnectAllMutation.isPending}
                 variant="outline"
                 className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
               >
                 <Unlink className="h-4 w-4 mr-2" />
-                Disconnect
+                Disconnect All
               </Button>
             </div>
 
@@ -208,7 +284,7 @@ export function BankConnection() {
                 What happens when you sync:
               </div>
               <ul className="space-y-1">
-                <li>• Updates account balances from your banks</li>
+                <li>• Updates account balances from all your banks</li>
                 <li>• Imports new transactions from the last 30 days</li>
                 <li>• Automatically categorizes spending</li>
                 <li>• Recalculates your net worth</li>
@@ -250,14 +326,13 @@ export function BankConnection() {
             {/* Benefits */}
             <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
               <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Why connect your bank:
+                Connect multiple UK banks:
               </div>
               <ul className="space-y-1">
-                <li>• Automatic transaction imports</li>
-                <li>• Real-time account balances</li>
-                <li>• Spending categorization</li>
-                <li>• Net worth tracking</li>
-                <li>• Budget monitoring</li>
+                <li>• Monzo, HSBC, Lloyds, Barclays, NatWest</li>
+                <li>• Santander, Halifax, Nationwide</li>
+                <li>• Starling Bank, Revolut, and more</li>
+                <li>• Complete financial overview in one place</li>
               </ul>
             </div>
 

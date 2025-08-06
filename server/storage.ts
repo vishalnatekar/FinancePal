@@ -75,8 +75,10 @@ export interface IStorage {
   // Bank Connection operations
   createBankConnection(connection: InsertBankConnection): Promise<BankConnection>;
   getActiveBankConnection(userId: string): Promise<BankConnection | undefined>;
+  getAllActiveBankConnections(userId: string): Promise<BankConnection[]>;
   updateBankConnection(id: string, connection: Partial<InsertBankConnection>): Promise<BankConnection>;
   deactivateBankConnection(userId: string): Promise<void>;
+  deactivateSpecificBankConnection(connectionId: string): Promise<void>;
   getAccountByExternalId(externalId: string): Promise<Account | undefined>;
   getTransactionByExternalId(externalId: string): Promise<Transaction | undefined>;
   getAccountCountForUser(userId: string): Promise<number>;
@@ -357,8 +359,17 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(bankConnections)
       .where(and(eq(bankConnections.userId, userId), eq(bankConnections.isActive, true)))
+      .orderBy(desc(bankConnections.createdAt))
       .limit(1);
     return connection || undefined;
+  }
+
+  async getAllActiveBankConnections(userId: string): Promise<BankConnection[]> {
+    return await db
+      .select()
+      .from(bankConnections)
+      .where(and(eq(bankConnections.userId, userId), eq(bankConnections.isActive, true)))
+      .orderBy(desc(bankConnections.createdAt));
   }
 
   async updateBankConnection(id: string, connection: Partial<InsertBankConnection>): Promise<BankConnection> {
@@ -375,6 +386,13 @@ export class DatabaseStorage implements IStorage {
       .update(bankConnections)
       .set({ isActive: false })
       .where(eq(bankConnections.userId, userId));
+  }
+
+  async deactivateSpecificBankConnection(connectionId: string): Promise<void> {
+    await db
+      .update(bankConnections)
+      .set({ isActive: false })
+      .where(eq(bankConnections.id, connectionId));
   }
 
   async getAccountByExternalId(externalId: string): Promise<Account | undefined> {
