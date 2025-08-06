@@ -37,10 +37,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       console.log('✅ User ID:', userId);
 
-      // Use same redirect URI as in connect endpoint
-      const redirectUri = process.env.NODE_ENV === 'production' 
-        ? `${req.protocol}://${req.get('host')}/api/banking/callback`
-        : 'https://finance-pal-vishalnatekar.replit.app/api/banking/callback';
+      // Always use production domain for callback (matches TrueLayer console config)
+      const redirectUri = 'https://finance-pal-vishalnatekar.replit.app/api/banking/callback';
       
       console.log('🔄 Exchanging code for token...');
       console.log('Redirect URI:', redirectUri);
@@ -147,9 +145,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Redirect to frontend with success
       res.redirect('/?connection=success');
     } catch (error) {
-      console.error("Banking callback error:", error);
+      console.error("❌ Banking callback error:", error);
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+        code: req.query.code,
+        state: req.query.state
+      });
       res.redirect('/?connection=error');
     }
+  });
+
+  // Test endpoint to verify callback route works
+  app.get("/api/banking/callback-test", async (req: any, res) => {
+    console.log('✅ Callback test endpoint hit');
+    res.json({ 
+      message: "Callback endpoint is accessible",
+      authenticated: req.isAuthenticated(),
+      userId: req.user?.claims?.sub || null
+    });
   });
 
   // Auth routes
@@ -484,10 +498,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TrueLayer Banking Integration Routes
   app.get("/api/banking/connect", isAuthenticated, async (req: any, res) => {
     try {
-      // Use production domain for TrueLayer callback
-      const redirectUri = process.env.NODE_ENV === 'production' 
-        ? `${req.protocol}://${req.get('host')}/api/banking/callback`
-        : 'https://finance-pal-vishalnatekar.replit.app/api/banking/callback';
+      // Always use production domain for callback (matches TrueLayer console config)
+      const redirectUri = 'https://finance-pal-vishalnatekar.replit.app/api/banking/callback';
       const authUrl = trueLayerService.generateAuthUrl(redirectUri);
       res.json({ authUrl });
     } catch (error) {
