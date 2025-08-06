@@ -119,6 +119,14 @@ export class TrueLayerService {
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('TrueLayer token exchange error details:', {
+        status: response.status,
+        error: errorText,
+        clientId: this.clientId,
+        redirectUri,
+        hasClientSecret: !!this.clientSecret,
+        secretLength: this.clientSecret?.length || 0
+      });
       throw new Error(`TrueLayer token exchange failed: ${response.status} ${errorText}`);
     }
 
