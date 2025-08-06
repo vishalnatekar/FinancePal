@@ -37,7 +37,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Save the bank connection
       const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
-      await storage.createBankConnection({
+      const bankConnection = await storage.createBankConnection({
         userId,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
@@ -45,6 +45,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt,
         scope: 'accounts balance transactions',
       });
+
+      // Immediately sync bank data after connection
+      try {
+        console.log('Starting automatic data sync for new bank connection...');
+        
+        // Fetch accounts from TrueLayer
+        const trueLayerAccounts = await trueLayerService.getAccounts(tokenData.access_token);
+        let syncedAccountsCount = 0;
+        let syncedTransactionsCount = 0;
+
+        for (const tlAccount of trueLayerAccounts) {
+          // Check if account already exists
+          let account = await storage.getAccountByExternalId(tlAccount.account_id);
+          
+          if (!account) {
+            // Create new account
+            account = await storage.createAccount({
+              userId,
+              externalId: tlAccount.account_id,
+              name: tlAccount.display_name,
+              type: tlAccount.account_type.toLowerCase(),
+              currency: tlAccount.currency,
+              institutionName: tlAccount.provider.display_name,
+              accountNumber: tlAccount.account_number.number || 'Hidden',
+              balance: '0', // Will be updated below
+            });
+            syncedAccountsCount++;
+          }
+
+          // Get current balance
+          const balance = await trueLayerService.getAccountBalance(tokenData.access_token, tlAccount.account_id);
+          await storage.updateAccount(account.id, {
+            balance: balance.current.toString(),
+            lastSynced: new Date(),
+          });
+
+          // Get transactions (last 30 days)
+          const fromDate = new Date();
+          fromDate.setDate(fromDate.getDate() - 30);
+          const transactions = await trueLayerService.getAccountTransactions(
+            tokenData.access_token,
+            tlAccount.account_id,
+            fromDate.toISOString().split('T')[0]
+          );
+
+          // Save transactions
+          for (const tlTransaction of transactions) {
+            const existingTransaction = await storage.getTransactionByExternalId(tlTransaction.transaction_id);
+            
+            if (!existingTransaction) {
+              const category = trueLayerService.categorizeTransaction(tlTransaction);
+              
+              await storage.createTransaction({
+                accountId: account.id,
+                externalId: tlTransaction.transaction_id,
+                amount: tlTransaction.amount.toString(),
+                description: tlTransaction.description,
+                date: new Date(tlTransaction.timestamp),
+                category,
+                categoryConfidence: '0.8',
+                metadata: {
+                  merchantName: tlTransaction.merchant_name,
+                  transactionType: tlTransaction.transaction_type,
+                  trueLayerCategory: tlTransaction.transaction_category,
+                },
+              });
+              syncedTransactionsCount++;
+            }
+          }
+        }
+
+        // Update last sync time
+        await storage.updateBankConnection(bankConnection.id, {
+          lastSynced: new Date(),
+        });
+
+        console.log(`Auto sync completed: ${syncedAccountsCount} accounts, ${syncedTransactionsCount} transactions`);
+      } catch (syncError) {
+        console.error('Auto sync failed, but bank connection saved:', syncError);
+        // Don't fail the entire callback if sync fails
+      }
 
       // Redirect to frontend with success
       res.redirect('/?connection=success');

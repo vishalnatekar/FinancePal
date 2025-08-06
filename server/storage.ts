@@ -109,10 +109,7 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
-  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
-    return user || undefined;
-  }
+  // Removed getUserByGoogleId - not needed with Replit Auth
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
