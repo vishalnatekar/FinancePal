@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUp, ArrowDown, University, CreditCard, Plus, Edit, TrendingUp, Clock } from "lucide-react";
+import { ArrowUp, ArrowDown, University, CreditCard, Plus, Edit, TrendingUp, Clock, RefreshCw } from "lucide-react";
 import { NetWorthChart } from "@/components/NetWorthChart";
 import { CategoryModal } from "@/components/CategoryModal";
 import { BankConnection } from "@/components/BankConnection";
@@ -104,6 +104,16 @@ export default function Dashboard() {
 
   const isLoading = accountsLoading || transactionsLoading || budgetsLoading || goalsLoading || netWorthLoading;
 
+  const currentNetWorth = netWorthData?.current;
+  const netWorthHistory = netWorthData?.history || [];
+
+  // Auto-calculate net worth when accounts are loaded and no current net worth exists
+  useEffect(() => {
+    if (accounts && accounts.length > 0 && !currentNetWorth && !calculateNetWorthMutation.isPending) {
+      calculateNetWorthMutation.mutate();
+    }
+  }, [accounts, currentNetWorth, calculateNetWorthMutation]);
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -121,9 +131,6 @@ export default function Dashboard() {
     );
   }
 
-  const currentNetWorth = netWorthData?.current;
-  const netWorthHistory = netWorthData?.history || [];
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Net Worth Summary */}
@@ -131,34 +138,14 @@ export default function Dashboard() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Net Worth</h2>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                <Clock className="h-4 w-4" />
-                <span>
-                  {currentNetWorth && currentNetWorth.createdAt
-                    ? `Updated ${format(new Date(currentNetWorth.createdAt), "MMM d, h:mm a")}`
-                    : "No data available"
-                  }
-                </span>
-              </div>
-              <Button
-                onClick={() => calculateNetWorthMutation.mutate()}
-                disabled={calculateNetWorthMutation.isPending}
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                {calculateNetWorthMutation.isPending ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Calculating...
-                  </>
-                ) : (
-                  <>
-                    <TrendingUp className="h-4 w-4" />
-                    Calculate Net Worth
-                  </>
-                )}
-              </Button>
+            <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+              <Clock className="h-4 w-4" />
+              <span>
+                {currentNetWorth && currentNetWorth.createdAt
+                  ? `Updated ${format(new Date(currentNetWorth.createdAt), "MMM d, h:mm a")}`
+                  : "Calculating from connected accounts..."
+                }
+              </span>
             </div>
           </div>
           
@@ -194,10 +181,10 @@ export default function Dashboard() {
           </div>
           
           <div className="mt-6">
-            <NetWorthChart data={netWorthHistory.map(item => ({
+            <NetWorthChart data={netWorthHistory.length > 0 ? netWorthHistory.map(item => ({
               ...item,
-              date: item.date.toISOString(),
-            }))} />
+              date: item.createdAt ? new Date(item.createdAt).toISOString() : new Date().toISOString(),
+            })) : []} />
           </div>
         </CardContent>
       </Card>
