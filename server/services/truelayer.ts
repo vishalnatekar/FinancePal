@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-// TrueLayer API configuration - auth URL is always production, but API URL differs for sandbox
+// TrueLayer API configuration - both auth and API URLs differ for sandbox
 const isSandbox = process.env.TRUELAYER_CLIENT_ID?.includes('sandbox') || process.env.NODE_ENV !== 'production';
 const TRUELAYER_BASE_URL = isSandbox ? 'https://api.truelayer-sandbox.com' : 'https://api.truelayer.com';
-const TRUELAYER_AUTH_URL = 'https://auth.truelayer.com'; // Always use production auth URL even for sandbox
+const TRUELAYER_AUTH_URL = isSandbox ? 'https://auth.truelayer-sandbox.com' : 'https://auth.truelayer.com';
 
 // TrueLayer data schemas
 const TrueLayerAccountSchema = z.object({
@@ -70,13 +70,14 @@ export class TrueLayerService {
   /**
    * Generate TrueLayer authorization URL for bank connection
    */
-  generateAuthUrl(redirectUri: string, scope: string[] = ['accounts', 'balance', 'transactions']): string {
+  generateAuthUrl(redirectUri: string, scope: string[] = ['info', 'accounts', 'balance', 'cards', 'transactions', 'direct_debits', 'standing_orders', 'offline_access']): string {
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: this.clientId,
       redirect_uri: redirectUri,
       scope: scope.join(' '),
       state: this.generateState(), // For security
+      providers: 'uk-cs-mock uk-ob-all uk-oauth-all', // Sandbox providers
     });
 
     // Use the correct TrueLayer auth endpoint (no /auth path needed)
