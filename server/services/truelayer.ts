@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-// TrueLayer API configuration - both auth and API URLs differ for sandbox
-const isSandbox = process.env.TRUELAYER_CLIENT_ID?.includes('sandbox') || process.env.NODE_ENV !== 'production';
-const TRUELAYER_BASE_URL = isSandbox ? 'https://api.truelayer-sandbox.com' : 'https://api.truelayer.com';
-const TRUELAYER_AUTH_URL = isSandbox ? 'https://auth.truelayer-sandbox.com' : 'https://auth.truelayer.com';
+// TrueLayer API configuration - use live environment by default
+const isLive = process.env.TRUELAYER_CLIENT_ID_LIVE && process.env.TRUELAYER_CLIENT_SECRET_LIVE;
+const TRUELAYER_BASE_URL = isLive ? 'https://api.truelayer.com' : 'https://api.truelayer-sandbox.com';
+const TRUELAYER_AUTH_URL = isLive ? 'https://auth.truelayer.com' : 'https://auth.truelayer-sandbox.com';
 
 // TrueLayer data schemas
 const TrueLayerAccountSchema = z.object({
@@ -53,16 +53,20 @@ export class TrueLayerService {
   private clientSecret: string;
 
   constructor() {
-    if (!process.env.TRUELAYER_CLIENT_ID || !process.env.TRUELAYER_CLIENT_SECRET) {
-      throw new Error('TrueLayer credentials not found. Please add TRUELAYER_CLIENT_ID and TRUELAYER_CLIENT_SECRET to your environment variables.');
+    // Use live credentials if available, otherwise fall back to sandbox
+    if (process.env.TRUELAYER_CLIENT_ID_LIVE && process.env.TRUELAYER_CLIENT_SECRET_LIVE) {
+      this.clientId = process.env.TRUELAYER_CLIENT_ID_LIVE;
+      this.clientSecret = process.env.TRUELAYER_CLIENT_SECRET_LIVE;
+    } else if (process.env.TRUELAYER_CLIENT_ID && process.env.TRUELAYER_CLIENT_SECRET) {
+      this.clientId = process.env.TRUELAYER_CLIENT_ID;
+      this.clientSecret = process.env.TRUELAYER_CLIENT_SECRET;
+    } else {
+      throw new Error('TrueLayer credentials not found. Please add TRUELAYER_CLIENT_ID_LIVE/TRUELAYER_CLIENT_SECRET_LIVE or TRUELAYER_CLIENT_ID/TRUELAYER_CLIENT_SECRET to your environment variables.');
     }
-    
-    this.clientId = process.env.TRUELAYER_CLIENT_ID;
-    this.clientSecret = process.env.TRUELAYER_CLIENT_SECRET;
     
     console.log('TrueLayer Service initialized:');
     console.log('- Client ID:', this.clientId);
-    console.log('- Using sandbox:', isSandbox);
+    console.log('- Using live environment:', isLive);
     console.log('- Auth URL base:', TRUELAYER_AUTH_URL);
     console.log('- API URL base:', TRUELAYER_BASE_URL);
   }
@@ -77,7 +81,7 @@ export class TrueLayerService {
       redirect_uri: redirectUri,
       scope: scope.join(' '),
       state: this.generateState(), // For security
-      providers: 'uk-cs-mock uk-ob-all uk-oauth-all', // Sandbox providers
+      providers: isLive ? 'uk-ob-all uk-oauth-all' : 'uk-cs-mock uk-ob-all uk-oauth-all', // Live or sandbox providers
     });
 
     // Use the correct TrueLayer auth endpoint (no /auth path needed)

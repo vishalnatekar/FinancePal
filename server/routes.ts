@@ -511,11 +511,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const redirectUri = `${req.protocol}://${req.get('host')}/api/banking/callback`;
       const authUrl = trueLayerService.generateAuthUrl(redirectUri);
+      const isLive = process.env.TRUELAYER_CLIENT_ID_LIVE && process.env.TRUELAYER_CLIENT_SECRET_LIVE;
       res.json({ 
         authUrl, 
         redirectUri,
-        clientId: process.env.TRUELAYER_CLIENT_ID,
-        environment: process.env.NODE_ENV
+        clientId: isLive ? process.env.TRUELAYER_CLIENT_ID_LIVE : process.env.TRUELAYER_CLIENT_ID,
+        environment: isLive ? 'live' : 'sandbox'
       });
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
