@@ -97,9 +97,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lastSynced: new Date(),
           });
 
-          // Get transactions (last 30 days)
+          // Get transactions (last 6 months to capture full history)
           const fromDate = new Date();
-          fromDate.setDate(fromDate.getDate() - 30);
+          fromDate.setDate(fromDate.getDate() - 180);
           const transactions = await trueLayerService.getAccountTransactions(
             tokenData.access_token,
             tlAccount.account_id,
@@ -380,36 +380,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the latest record
       const current = await storage.getLatestNetWorth(userId);
       
-      // If we don't have enough historical data, create some sample points for visualization
+      // If we don't have enough historical data, create realistic points based on transaction history
       if (history && history.length < 7 && current) {
-        const sampleHistory = [];
-        const currentBalance = parseFloat(current.netWorth);
-        const baseDate = new Date();
-        
-        // Create weekly data points going back 8 weeks
-        for (let i = 8; i >= 1; i--) {
-          const date = new Date(baseDate);
-          date.setDate(date.getDate() - (i * 7));
+        try {
+          const transactions = await storage.getTransactionsByUserId(userId);
+          const currentBalance = parseFloat(current.netWorth);
+          const sampleHistory = [];
           
-          // Simulate slight variations in net worth over time
-          const variation = (Math.random() - 0.5) * 0.1; // ±5% variation
-          const historicalBalance = currentBalance * (1 + variation);
+          // Group transactions by week and calculate running balance
+          const now = new Date();
+          const weeksBack = 12; // 3 months
+          let runningBalance = currentBalance;
           
-          sampleHistory.push({
-            id: `sample-${i}`,
-            userId,
-            netWorth: historicalBalance.toString(),
-            totalAssets: (historicalBalance + Math.abs(historicalBalance * 0.1)).toString(),
-            totalLiabilities: Math.abs(historicalBalance * 0.1).toString(),
-            date: date,
-            createdAt: date,
-            updatedAt: date
-          });
+          for (let week = 0; week < weeksBack; week++) {
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - (week * 7));
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() - 7);
+            
+            // Find transactions in this week period
+            const weekTransactions = transactions.filter(t => {
+              const transDate = new Date(t.date);
+              return transDate >= weekEnd && transDate < weekStart;
+            });
+            
+            // Calculate balance change for this week
+            const weekChange = weekTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+            runningBalance -= weekChange; // Go backward in time
+            
+            sampleHistory.unshift({
+              id: `calculated-${week}`,
+              userId,
+              netWorth: runningBalance.toString(),
+              totalAssets: (runningBalance + Math.abs(runningBalance * 0.05)).toString(),
+              totalLiabilities: Math.abs(runningBalance * 0.05).toString(),
+              date: new Date(weekStart),
+              createdAt: new Date(weekStart),
+              updatedAt: new Date(weekStart)
+            });
+          }
+          
+          // Add the current record
+          sampleHistory.push(current);
+          history = sampleHistory;
+        } catch (error) {
+          console.error("Error creating historical data from transactions:", error);
+          // Fallback to just current data
+          history = current ? [current] : [];
         }
-        
-        // Add the current record
-        sampleHistory.push(current);
-        history = sampleHistory;
       }
       
       // Return in the format expected by the dashboard
@@ -659,9 +677,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastSynced: new Date(),
         });
 
-        // Get transactions (last 30 days)
+        // Get transactions (last 180 days to match transaction history)
         const fromDate = new Date();
-        fromDate.setDate(fromDate.getDate() - 30);
+        fromDate.setDate(fromDate.getDate() - 180);
         const transactions = await trueLayerService.getAccountTransactions(
           accessToken,
           tlAccount.account_id,
@@ -725,6 +743,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  // Add manual fresh sync endpoint
+  app.post("/api/banking/force-sync", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get active bank connection
+      const bankConnection = await storage.getActiveBankConnection(userId);
+      if (!bankConnection) {
+        return res.status(404).json({ message: "No active bank connection found." });
+      }
+
+      // Force refresh token to ensure we have fresh access
+      const refreshedTokens = await trueLayerService.refreshToken(bankConnection.refreshToken);
+      const newExpiresAt = new Date(Date.now() + refreshedTokens.expires_in * 1000);
+      
+      await storage.updateBankConnection(bankConnection.id, {
+        accessToken: refreshedTokens.access_token,
+        refreshToken: refreshedTokens.refresh_token,
+        expiresAt: newExpiresAt,
+      });
+
+      // Fetch fresh transactions from past 6 months
+      const trueLayerAccounts = await trueLayerService.getAccounts(refreshedTokens.access_token);
+      let newTransactions = 0;
+
+      for (const tlAccount of trueLayerAccounts) {
+        const account = await storage.getAccountByExternalId(tlAccount.account_id);
+        if (!account) continue;
+
+        // Update balance
+        const balance = await trueLayerService.getAccountBalance(refreshedTokens.access_token, tlAccount.account_id);
+        await storage.updateAccount(account.id, {
+          balance: balance.current.toString(),
+          lastSynced: new Date(),
+        });
+
+        // Get fresh transactions (6 months)
+        const fromDate = new Date();
+        fromDate.setDate(fromDate.getDate() - 180);
+        const transactions = await trueLayerService.getAccountTransactions(
+          refreshedTokens.access_token,
+          tlAccount.account_id,
+          fromDate.toISOString().split('T')[0]
+        );
+
+        // Save new transactions
+        for (const tlTransaction of transactions) {
+          const existingTransaction = await storage.getTransactionByExternalId(tlTransaction.transaction_id);
+          
+          if (!existingTransaction) {
+            const category = trueLayerService.categorizeTransaction(tlTransaction);
+            
+            await storage.createTransaction({
+              accountId: account.id,
+              externalId: tlTransaction.transaction_id,
+              amount: tlTransaction.amount.toString(),
+              description: tlTransaction.description,
+              date: new Date(tlTransaction.timestamp),
+              category,
+              categoryConfidence: '0.8',
+              metadata: {
+                merchantName: tlTransaction.merchant_name,
+                transactionType: tlTransaction.transaction_type,
+                trueLayerCategory: tlTransaction.transaction_category,
+              },
+            });
+            newTransactions++;
+          }
+        }
+      }
+
+      await storage.updateBankConnection(bankConnection.id, {
+        lastSynced: new Date(),
+      });
+
+      res.json({ 
+        success: true, 
+        message: `Fresh sync completed. Found ${newTransactions} new transactions.`,
+        newTransactions 
+      });
+    } catch (error) {
+      console.error("Force sync error:", error);
+      res.status(500).json({ message: "Failed to sync fresh bank data" });
     }
   });
 
