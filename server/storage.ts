@@ -169,7 +169,7 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
-  async getTransactionsByUserId(userId: string, limit = 50): Promise<Transaction[]> {
+  async getTransactionsByUserId(userId: string, limit = 1000): Promise<Transaction[]> {
     return await db
       .select({
         id: transactions.id,
@@ -362,6 +362,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(bankConnections.createdAt))
       .limit(1);
     return connection || undefined;
+  }
+
+  async getAllActiveBankConnections(): Promise<BankConnection[]> {
+    return await db
+      .select()
+      .from(bankConnections)
+      .where(eq(bankConnections.isActive, true))
+      .orderBy(desc(bankConnections.createdAt));
   }
 
   async getAllActiveBankConnections(userId: string): Promise<BankConnection[]> {

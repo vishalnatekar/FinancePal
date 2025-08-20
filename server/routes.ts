@@ -380,54 +380,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the latest record
       const current = await storage.getLatestNetWorth(userId);
       
-      // If we don't have enough historical data, create realistic points based on transaction history
-      if (history && history.length < 7 && current) {
-        try {
-          const transactions = await storage.getTransactionsByUserId(userId);
+      // Always create historical data based on actual transaction history
+      try {
+        const transactions = await storage.getTransactionsByUserId(userId);
+        if (transactions && transactions.length > 0 && current) {
           const currentBalance = parseFloat(current.netWorth);
-          const sampleHistory = [];
+          const historicalData = [];
           
-          // Group transactions by week and calculate running balance
-          const now = new Date();
-          const weeksBack = 12; // 3 months
-          let runningBalance = currentBalance;
+          // Sort transactions by date (oldest first)
+          const sortedTransactions = transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           
-          for (let week = 0; week < weeksBack; week++) {
-            const weekStart = new Date(now);
-            weekStart.setDate(now.getDate() - (week * 7));
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekStart.getDate() - 7);
+          // Get the earliest transaction date
+          const earliestDate = new Date(sortedTransactions[0].date);
+          const currentDate = new Date();
+          
+          // Calculate starting balance by working backwards from current balance
+          const totalTransactionValue = transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+          let startingBalance = currentBalance - totalTransactionValue;
+          
+          // Create weekly data points from earliest transaction to now
+          const daysBetween = Math.ceil((currentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24));
+          const weeksBetween = Math.ceil(daysBetween / 7);
+          
+          let runningBalance = startingBalance;
+          
+          for (let week = 0; week <= weeksBetween; week++) {
+            const weekDate = new Date(earliestDate);
+            weekDate.setDate(earliestDate.getDate() + (week * 7));
             
-            // Find transactions in this week period
-            const weekTransactions = transactions.filter(t => {
-              const transDate = new Date(t.date);
-              return transDate >= weekEnd && transDate < weekStart;
-            });
+            if (weekDate > currentDate) break;
             
-            // Calculate balance change for this week
-            const weekChange = weekTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
-            runningBalance -= weekChange; // Go backward in time
+            // Find transactions up to this week
+            const transactionsUpToWeek = sortedTransactions.filter(t => 
+              new Date(t.date) <= weekDate
+            );
             
-            sampleHistory.unshift({
-              id: `calculated-${week}`,
+            // Calculate balance at this point in time
+            const balanceChange = transactionsUpToWeek.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+            runningBalance = startingBalance + balanceChange;
+            
+            historicalData.push({
+              id: `historical-${week}`,
               userId,
               netWorth: runningBalance.toString(),
-              totalAssets: (runningBalance + Math.abs(runningBalance * 0.05)).toString(),
-              totalLiabilities: Math.abs(runningBalance * 0.05).toString(),
-              date: new Date(weekStart),
-              createdAt: new Date(weekStart),
-              updatedAt: new Date(weekStart)
+              totalAssets: Math.max(runningBalance, 0).toString(),
+              totalLiabilities: Math.max(-runningBalance, 0).toString(),
+              date: weekDate,
+              createdAt: weekDate,
+              updatedAt: weekDate
             });
           }
           
-          // Add the current record
-          sampleHistory.push(current);
-          history = sampleHistory;
-        } catch (error) {
-          console.error("Error creating historical data from transactions:", error);
-          // Fallback to just current data
-          history = current ? [current] : [];
+          // Use historical data instead of database records
+          history = historicalData;
         }
+      } catch (error) {
+        console.error("Error creating historical data from transactions:", error);
+        // Use existing history if available
       }
       
       // Return in the format expected by the dashboard
@@ -885,6 +894,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to disconnect specific banking connection" });
     }
   });
+
+  // Add automatic daily sync scheduler
+  if (process.env.NODE_ENV === 'production') {
+    setInterval(async () => {
+      try {
+        console.log('Starting automatic daily bank sync...');
+        
+        // Get all active bank connections
+        const connections = await storage.getAllActiveBankConnections();
+        
+        for (const connection of connections) {
+          try {
+            // Check if token needs refresh
+            let accessToken = connection.accessToken;
+            if (new Date() >= connection.expiresAt) {
+              const refreshedTokens = await trueLayerService.refreshToken(connection.refreshToken);
+              const newExpiresAt = new Date(Date.now() + refreshedTokens.expires_in * 1000);
+              
+              await storage.updateBankConnection(connection.id, {
+                accessToken: refreshedTokens.access_token,
+                refreshToken: refreshedTokens.refresh_token,
+                expiresAt: newExpiresAt,
+              });
+              
+              accessToken = refreshedTokens.access_token;
+            }
+
+            // Sync latest transactions (last 7 days)
+            const trueLayerAccounts = await trueLayerService.getAccounts(accessToken);
+            
+            for (const tlAccount of trueLayerAccounts) {
+              const account = await storage.getAccountByExternalId(tlAccount.account_id);
+              if (!account) continue;
+
+              // Update balance
+              const balance = await trueLayerService.getAccountBalance(accessToken, tlAccount.account_id);
+              await storage.updateAccount(account.id, {
+                balance: balance.current.toString(),
+                lastSynced: new Date(),
+              });
+
+              // Get recent transactions (last 7 days)
+              const fromDate = new Date();
+              fromDate.setDate(fromDate.getDate() - 7);
+              const transactions = await trueLayerService.getAccountTransactions(
+                accessToken,
+                tlAccount.account_id,
+                fromDate.toISOString().split('T')[0]
+              );
+
+              // Save new transactions
+              for (const tlTransaction of transactions) {
+                const existingTransaction = await storage.getTransactionByExternalId(tlTransaction.transaction_id);
+                
+                if (!existingTransaction) {
+                  const category = trueLayerService.categorizeTransaction(tlTransaction);
+                  
+                  await storage.createTransaction({
+                    accountId: account.id,
+                    externalId: tlTransaction.transaction_id,
+                    amount: tlTransaction.amount.toString(),
+                    description: tlTransaction.description,
+                    date: new Date(tlTransaction.timestamp),
+                    category,
+                    categoryConfidence: '0.8',
+                    metadata: {
+                      merchantName: tlTransaction.merchant_name,
+                      transactionType: tlTransaction.transaction_type,
+                      trueLayerCategory: tlTransaction.transaction_category,
+                    },
+                  });
+                }
+              }
+            }
+
+            await storage.updateBankConnection(connection.id, {
+              lastSynced: new Date(),
+            });
+            
+            console.log(`Daily sync completed for user ${connection.userId}`);
+          } catch (error) {
+            console.error(`Daily sync failed for connection ${connection.id}:`, error);
+          }
+        }
+      } catch (error) {
+        console.error('Daily sync scheduler error:', error);
+      }
+    }, 24 * 60 * 60 * 1000); // Run every 24 hours
+  }
 
   const httpServer = createServer(app);
   return httpServer;
