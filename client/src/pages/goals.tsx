@@ -5,21 +5,83 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Edit, Trash2, Target, Calendar, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { format } from "date-fns";
 import type { Goal } from "@shared/schema";
 
 type GoalWithStats = Goal & { progress: number; remaining: number; timeRemaining: string | null };
 
+const goalSchema = z.object({
+  name: z.string().min(1, "Goal name is required"),
+  description: z.string().optional(),
+  targetAmount: z.string().min(1, "Target amount is required"),
+  currentAmount: z.string().optional(),
+  targetDate: z.string().min(1, "Target date is required"),
+  category: z.string().optional(),
+});
+
+type GoalFormData = z.infer<typeof goalSchema>;
+
 export default function GoalsPage() {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const form = useForm<GoalFormData>({
+    resolver: zodResolver(goalSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      targetAmount: "",
+      currentAmount: "0",
+      targetDate: "",
+      category: "",
+    },
+  });
+
   const { data: goals, isLoading } = useQuery<GoalWithStats[]>({
     queryKey: ["/api/goals"],
+  });
+
+  const createGoalMutation = useMutation({
+    mutationFn: async (data: GoalFormData) => {
+      const response = await apiRequest("POST", "/api/goals", {
+        name: data.name,
+        description: data.description,
+        targetAmount: data.targetAmount,
+        currentAmount: data.currentAmount || "0",
+        targetDate: data.targetDate,
+        category: data.category,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Goal Created",
+        description: "Goal has been successfully created",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      setIsAddDialogOpen(false);
+      form.reset();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create goal",
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteGoalMutation = useMutation({
@@ -42,6 +104,10 @@ export default function GoalsPage() {
       });
     },
   });
+
+  const onSubmit = (data: GoalFormData) => {
+    createGoalMutation.mutate(data);
+  };
 
   if (isLoading) {
     return (
@@ -75,10 +141,145 @@ export default function GoalsPage() {
             Track progress toward your financial objectives
           </p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Goal
-        </Button>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Goal
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Create New Goal</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Goal Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Emergency Fund" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Save for 6 months of expenses..." 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="targetAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Target Amount (£)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="10000.00"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="currentAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Current Amount (£)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="targetDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Target Date</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category (Optional)</FormLabel>
+                      <FormControl>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Emergency Fund">Emergency Fund</SelectItem>
+                            <SelectItem value="Vacation">Vacation</SelectItem>
+                            <SelectItem value="Home">Home</SelectItem>
+                            <SelectItem value="Investment">Investment</SelectItem>
+                            <SelectItem value="Education">Education</SelectItem>
+                            <SelectItem value="Retirement">Retirement</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsAddDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={createGoalMutation.isPending}
+                  >
+                    {createGoalMutation.isPending ? "Creating..." : "Create Goal"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {goals?.length === 0 ? (
@@ -92,10 +293,145 @@ export default function GoalsPage() {
               <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
                 Set your first financial goal to start working towards your dreams and building better money habits
               </p>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Goal
-              </Button>
+              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Goal
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Create New Goal</DialogTitle>
+                  </DialogHeader>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Goal Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Emergency Fund" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description (Optional)</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Save for 6 months of expenses..." 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="targetAmount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Target Amount (£)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="10000.00"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="currentAmount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Current Amount (£)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="targetDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Target Date</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Category (Optional)</FormLabel>
+                            <FormControl>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Emergency Fund">Emergency Fund</SelectItem>
+                                  <SelectItem value="Vacation">Vacation</SelectItem>
+                                  <SelectItem value="Home">Home</SelectItem>
+                                  <SelectItem value="Investment">Investment</SelectItem>
+                                  <SelectItem value="Education">Education</SelectItem>
+                                  <SelectItem value="Retirement">Retirement</SelectItem>
+                                  <SelectItem value="Other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex justify-end space-x-2 pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsAddDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          type="submit" 
+                          disabled={createGoalMutation.isPending}
+                        >
+                          {createGoalMutation.isPending ? "Creating..." : "Create Goal"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardContent>
         </Card>

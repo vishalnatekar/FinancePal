@@ -54,7 +54,7 @@ export default function TransactionsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent Transactions ({transactions?.length || 0})</CardTitle>
+          <CardTitle>All Transactions</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
