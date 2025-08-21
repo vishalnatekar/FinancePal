@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
 
 interface HeaderProps {
   user: any;
@@ -19,8 +20,10 @@ export function Header({ user }: HeaderProps) {
   const [location] = useLocation();
   const { toast } = useToast();
 
+  const { logout } = useFirebaseAuth();
+  
   const handleSignOut = () => {
-    window.location.href = "/api/logout";
+    logout();
   };
 
   const navItems = [
@@ -70,13 +73,13 @@ export function Header({ user }: HeaderProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.profileImageUrl} alt={user.firstName || user.email} />
+                    <AvatarImage src={user.photoURL} alt={user.displayName || user.email} />
                     <AvatarFallback>
-                      {user.firstName ? user.firstName[0] : user.email[0].toUpperCase()}
+                      {user.displayName ? user.displayName[0] : user.email[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm font-medium text-gray-700">
-                    {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email}
+                    {user.displayName || user.email}
                   </span>
                   <ChevronDown className="h-4 w-4 text-gray-600" />
                 </Button>

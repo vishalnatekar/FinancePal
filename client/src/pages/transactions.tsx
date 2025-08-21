@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUp, ArrowDown, Edit, Clock } from "lucide-react";
+import { ArrowUp, ArrowDown, Edit, Clock, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { CategoryModal } from "@/components/CategoryModal";
 import { format } from "date-fns";
 import type { Transaction } from "@shared/schema";
@@ -19,6 +20,38 @@ export default function TransactionsPage() {
   const handleEditCategory = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
     setCategoryModalOpen(true);
+  };
+
+  const downloadCSV = () => {
+    if (!transactions || transactions.length === 0) return;
+
+    // Create CSV header
+    const headers = ['Date', 'Description', 'Amount', 'Category', 'Account'];
+    
+    // Create CSV rows
+    const csvRows = transactions.map(transaction => [
+      format(new Date(transaction.date), 'yyyy-MM-dd'),
+      `"${transaction.description.replace(/"/g, '""')}"`, // Escape quotes
+      transaction.amount,
+      transaction.category || 'Uncategorized',
+      transaction.accountId
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [headers, ...csvRows]
+      .map(row => row.join(','))
+      .join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `transactions-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (isLoading) {
@@ -54,7 +87,20 @@ export default function TransactionsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Transactions</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>All Transactions</CardTitle>
+            {transactions && transactions.length > 0 && (
+              <Button
+                onClick={downloadCSV}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download CSV
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

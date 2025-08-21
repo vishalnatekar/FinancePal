@@ -48,10 +48,11 @@ The system uses a relational schema with the following core entities:
 - **Net Worth History**: Time-series data for net worth tracking and visualization
 
 ### Authentication and Authorization
-- **Primary Method**: Firebase Authentication with Google OAuth
-- **Session Management**: Server-side sessions stored in PostgreSQL
-- **Security**: Secure HTTP-only cookies with proper CORS configuration
-- **User Flow**: OAuth-based registration and login with automatic user provisioning
+- **Primary Method**: Firebase Authentication with Google OAuth (fully implemented)
+- **Client-Side**: Firebase Auth with react-firebase-hooks for state management
+- **Security**: Client-side Firebase authentication with Google OAuth provider
+- **User Flow**: Direct Google OAuth integration without server-side sessions
+- **Migration**: Switched from Replit SSO to Google-only authentication for better UX
 
 ### Transaction Categorization System
 - **Rule-Based Engine**: Keyword matching and merchant pattern recognition
@@ -83,7 +84,9 @@ The backend exposes RESTful endpoints for:
 
 ### Authentication Services
 - **Firebase Authentication**: Google OAuth integration for secure user authentication
-- **Configuration**: Environment-based Firebase project configuration
+- **Configuration**: Environment-based Firebase project configuration with API key, App ID, and Project ID
+- **React Integration**: react-firebase-hooks for seamless auth state management
+- **Features**: Direct Google sign-in with redirect flow, automatic user profile management
 
 ### Database Services
 - **Neon PostgreSQL**: Serverless PostgreSQL database with automatic scaling
@@ -94,6 +97,7 @@ The backend exposes RESTful endpoints for:
 - **Tailwind CSS**: Utility-first CSS framework with custom design system
 - **Lucide Icons**: Consistent icon library for UI elements
 - **Recharts**: Data visualization library for financial charts and graphs
+- **CSV Export**: Client-side CSV generation and download functionality for transaction data
 
 ### Development and Build Tools
 - **Vite**: Fast build tool with hot module replacement
