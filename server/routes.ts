@@ -281,7 +281,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const budgets = await storage.getBudgetsByUserId(userId);
-      res.json(budgets);
+      const transactions = await storage.getTransactionsByUserId(userId);
+      
+      // Calculate spent amounts for each budget
+      const budgetsWithCalculations = budgets.map(budget => {
+        // Filter transactions for this budget's category and time period
+        const relevantTransactions = transactions.filter(transaction => {
+          const transactionDate = new Date(transaction.date);
+          const budgetStart = new Date(budget.startDate);
+          const budgetEnd = new Date(budget.endDate);
+          
+          // Check if transaction is in the budget period and matches category
+          return transaction.category === budget.category && 
+                 transactionDate >= budgetStart && 
+                 transactionDate <= budgetEnd &&
+                 parseFloat(transaction.amount) < 0; // Only outgoing transactions (negative amounts)
+        });
+        
+        // Calculate total spent (convert negative amounts to positive)
+        const spent = relevantTransactions.reduce((total, transaction) => 
+          total + Math.abs(parseFloat(transaction.amount)), 0
+        );
+        
+        const budgetAmount = parseFloat(budget.amount);
+        const remaining = budgetAmount - spent;
+        const percentageUsed = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
+        
+        return {
+          ...budget,
+          spent,
+          remaining,
+          percentageUsed
+        };
+      });
+      
+      res.json(budgetsWithCalculations);
     } catch (error) {
       console.error("Get budgets error:", error);
       res.status(500).json({ message: "Failed to get budgets" });
@@ -337,7 +371,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const goals = await storage.getGoalsByUserId(userId);
-      res.json(goals);
+      
+      // Calculate progress for each goal
+      const goalsWithCalculations = goals.map(goal => {
+        const current = parseFloat(goal.currentAmount);
+        const target = parseFloat(goal.targetAmount);
+        const progress = target > 0 ? (current / target) * 100 : 0;
+        const remaining = target - current;
+        
+        // Calculate time remaining if target date exists
+        let timeRemaining = null;
+        if (goal.targetDate) {
+          const now = new Date();
+          const targetDate = new Date(goal.targetDate);
+          const timeDiff = targetDate.getTime() - now.getTime();
+          const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+          
+          if (daysRemaining > 0) {
+            if (daysRemaining === 1) {
+              timeRemaining = "1 day";
+            } else if (daysRemaining < 30) {
+              timeRemaining = `${daysRemaining} days`;
+            } else if (daysRemaining < 365) {
+              const months = Math.ceil(daysRemaining / 30);
+              timeRemaining = months === 1 ? "1 month" : `${months} months`;
+            } else {
+              const years = Math.ceil(daysRemaining / 365);
+              timeRemaining = years === 1 ? "1 year" : `${years} years`;
+            }
+          } else {
+            timeRemaining = "Overdue";
+          }
+        }
+        
+        return {
+          ...goal,
+          progress,
+          remaining,
+          timeRemaining
+        };
+      });
+      
+      res.json(goalsWithCalculations);
     } catch (error) {
       console.error("Get goals error:", error);
       res.status(500).json({ message: "Failed to get goals" });
