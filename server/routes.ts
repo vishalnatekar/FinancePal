@@ -398,36 +398,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const totalTransactionValue = transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
           let startingBalance = currentBalance - totalTransactionValue;
           
-          // Create weekly data points from earliest transaction to now
+          // Create daily data points from earliest transaction to now
           const daysBetween = Math.ceil((currentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24));
-          const weeksBetween = Math.ceil(daysBetween / 7);
           
           let runningBalance = startingBalance;
           
-          for (let week = 0; week <= weeksBetween; week++) {
-            const weekDate = new Date(earliestDate);
-            weekDate.setDate(earliestDate.getDate() + (week * 7));
+          for (let day = 0; day <= daysBetween; day++) {
+            const dayDate = new Date(earliestDate);
+            dayDate.setDate(earliestDate.getDate() + day);
             
-            if (weekDate > currentDate) break;
+            if (dayDate > currentDate) break;
             
-            // Find transactions up to this week
-            const transactionsUpToWeek = sortedTransactions.filter(t => 
-              new Date(t.date) <= weekDate
+            // Find transactions up to this day
+            const transactionsUpToDay = sortedTransactions.filter(t => 
+              new Date(t.date) <= dayDate
             );
             
             // Calculate balance at this point in time
-            const balanceChange = transactionsUpToWeek.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+            const balanceChange = transactionsUpToDay.reduce((sum, t) => sum + parseFloat(t.amount), 0);
             runningBalance = startingBalance + balanceChange;
             
             historicalData.push({
-              id: `historical-${week}`,
+              id: `historical-${day}`,
               userId,
               netWorth: runningBalance.toString(),
               totalAssets: Math.max(runningBalance, 0).toString(),
               totalLiabilities: Math.max(-runningBalance, 0).toString(),
-              date: weekDate,
-              createdAt: weekDate,
-              updatedAt: weekDate
+              date: dayDate,
+              createdAt: dayDate,
+              updatedAt: dayDate
             });
           }
           

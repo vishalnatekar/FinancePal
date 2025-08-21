@@ -25,12 +25,15 @@ export function NetWorthChart({ data }: NetWorthChartProps) {
     );
   }
 
-  const chartData = data.map((item) => ({
-    date: format(new Date(item.date), "MMM dd"),
-    netWorth: parseFloat(item.netWorth),
-    assets: parseFloat(item.totalAssets),
-    liabilities: parseFloat(item.totalLiabilities),
-  })).reverse(); // Show oldest to newest
+  // Sort data chronologically (earliest to latest) and format for chart
+  const chartData = data
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .map((item) => ({
+      date: format(new Date(item.date), "MMM dd"),
+      netWorth: parseFloat(item.netWorth),
+      assets: parseFloat(item.totalAssets),
+      liabilities: parseFloat(item.totalLiabilities),
+    }));
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-GB", {
