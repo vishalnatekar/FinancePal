@@ -374,7 +374,7 @@ export default function BudgetPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600 dark:text-gray-400">
-                      Spent: £{budget.spent.toFixed(2)}
+                      Spent: £{budget.spent ? budget.spent.toFixed(2) : "0.00"}
                     </span>
                     <span className="text-gray-600 dark:text-gray-400">
                       Budget: £{parseFloat(budget.amount).toFixed(2)}
@@ -382,22 +382,22 @@ export default function BudgetPage() {
                   </div>
                   
                   <Progress 
-                    value={Math.min(budget.percentageUsed, 100)} 
+                    value={Math.min(budget.percentageUsed ?? 0, 100)} 
                     className="h-2"
                   />
                   
                   <div className="flex items-center justify-between">
                     <div className="text-sm">
                       <span className={`font-medium ${
-                        budget.remaining >= 0 
+                        (budget.remaining ?? 0) >= 0 
                           ? 'text-green-600 dark:text-green-400' 
                           : 'text-red-600 dark:text-red-400'
                       }`}>
-                        {budget.remaining >= 0 ? '£' + budget.remaining.toFixed(2) + ' remaining' : '£' + Math.abs(budget.remaining).toFixed(2) + ' over budget'}
+                        {(budget.remaining ?? 0) >= 0 ? '£' + (budget.remaining ?? 0).toFixed(2) + ' remaining' : '£' + Math.abs(budget.remaining ?? 0).toFixed(2) + ' over budget'}
                       </span>
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">
-                      {budget.percentageUsed.toFixed(0)}% used
+                      {(budget.percentageUsed ?? 0).toFixed(0)}% used
                     </div>
                   </div>
                 </div>
