@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUp, ArrowDown, University, CreditCard, Plus, Edit, TrendingUp, Clock, RefreshCw } from "lucide-react";
+import { ArrowUp, ArrowDown, University, CreditCard, Plus, Edit, TrendingUp, TrendingDown, Clock, RefreshCw } from "lucide-react";
 import { NetWorthChart } from "@/components/NetWorthChart";
 import { CategoryModal } from "@/components/CategoryModal";
 import { BankConnection } from "@/components/BankConnection";
@@ -155,14 +155,31 @@ export default function Dashboard() {
               <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                 {currentNetWorth ? formatCurrency(currentNetWorth.netWorth) : "£0.00"}
               </p>
-              {netWorthHistory.length > 1 && (
-                <div className="flex items-center justify-center md:justify-start mt-2">
-                  <TrendingUp className="h-4 w-4 text-green-600 mr-1" />
-                  <span className="text-green-600 text-sm font-medium">
-                    Growing trend
-                  </span>
-                </div>
-              )}
+              {netWorthHistory.length > 1 && (() => {
+                const recent = parseFloat(netWorthHistory[netWorthHistory.length - 1]?.netWorth || "0");
+                const previous = parseFloat(netWorthHistory[netWorthHistory.length - 2]?.netWorth || "0");
+                const isGrowing = recent > previous;
+                
+                return (
+                  <div className="flex items-center justify-center md:justify-start mt-2">
+                    {isGrowing ? (
+                      <>
+                        <TrendingUp className="h-4 w-4 text-green-600 mr-1" />
+                        <span className="text-green-600 text-sm font-medium">
+                          Growing trend
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <TrendingDown className="h-4 w-4 text-red-600 mr-1" />
+                        <span className="text-red-600 text-sm font-medium">
+                          Declining trend
+                        </span>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             
             <div className="text-center">

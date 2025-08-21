@@ -291,7 +291,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/budgets", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertBudgetSchema.parse({ ...req.body, userId });
+      const budgetData = {
+        ...req.body,
+        userId,
+        startDate: new Date(), // Set current date as start date
+        endDate: req.body.period === "monthly" ? 
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : 
+          req.body.period === "weekly" ? 
+            new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) :
+            new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // yearly
+      };
+      const validatedData = insertBudgetSchema.parse(budgetData);
       const budget = await storage.createBudget(validatedData);
       res.json(budget);
     } catch (error) {
@@ -337,7 +347,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/goals", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertGoalSchema.parse({ ...req.body, userId });
+      const goalData = {
+        ...req.body,
+        userId,
+        targetDate: req.body.targetDate ? new Date(req.body.targetDate) : null
+      };
+      const validatedData = insertGoalSchema.parse(goalData);
       const goal = await storage.createGoal(validatedData);
       res.json(goal);
     } catch (error) {

@@ -85,6 +85,7 @@ export const goals = pgTable("goals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  description: text("description"),
   targetAmount: decimal("target_amount", { precision: 12, scale: 2 }).notNull(),
   currentAmount: decimal("current_amount", { precision: 12, scale: 2 }).notNull().default("0"),
   targetDate: timestamp("target_date"),

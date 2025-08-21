@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
 import { Loading } from "@/components/ui/loading";
 import { useAuth } from "@/hooks/useAuth";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "./firebase";
 import Dashboard from "@/pages/dashboard";
 import TransactionsPage from "@/pages/transactions";
 import BudgetPage from "@/pages/budget";
