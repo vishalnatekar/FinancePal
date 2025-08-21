@@ -481,7 +481,7 @@ export default function GoalsPage() {
                   </div>
                   
                   <Progress 
-                    value={Math.min(goal.progress, 100)} 
+                    value={Math.min(goal.progress ?? 0, 100)} 
                     className="h-3"
                   />
                   
@@ -489,7 +489,7 @@ export default function GoalsPage() {
                     <div className="flex items-center gap-2">
                       <TrendingUp className="h-4 w-4 text-green-500" />
                       <span>
-                        {goal.progress.toFixed(1)}% complete
+                        {(goal.progress ?? 0).toFixed(1)}% complete
                       </span>
                     </div>
                     {goal.targetDate && (
@@ -505,7 +505,7 @@ export default function GoalsPage() {
                   <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                     <div className="text-sm">
                       <span className="font-medium text-gray-900 dark:text-gray-100">
-                        £{goal.remaining.toFixed(2)} remaining
+                        £{(goal.remaining ?? 0).toFixed(2)} remaining
                       </span>
                       {goal.timeRemaining && (
                         <span className="text-gray-500 dark:text-gray-400 ml-2">
