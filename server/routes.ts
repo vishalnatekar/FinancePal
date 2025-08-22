@@ -20,7 +20,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/banking/callback", async (req: any, res) => {
     try {
       console.log('=== BANKING CALLBACK START ===');
-      console.log('Query params:', req.query);
+      console.log('Query params:', JSON.stringify(req.query, null, 2));
+      console.log('Headers:', JSON.stringify(req.headers, null, 2));
       
       const { code, state } = req.query;
       
@@ -29,15 +30,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.redirect('/?connection=error&reason=missing_code');
       }
 
-      // Extract user ID from state parameter (we'll modify the frontend to include this)
+      // Extract user ID from state parameter 
       let userId = null;
       try {
         if (state) {
+          console.log('🔍 Parsing state parameter:', state);
           const stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
+          console.log('📊 Parsed state data:', stateData);
           userId = stateData.userId;
         }
       } catch (e) {
-        console.log('Could not parse state parameter');
+        console.log('❌ Could not parse state parameter:', e);
+        console.log('Raw state:', state);
       }
 
       if (!userId) {

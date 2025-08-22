@@ -40,10 +40,14 @@ export default function UKBankingDemo() {
     
     // Create state parameter with user ID for callback
     const stateData = { userId: user.uid, bank: selectedBank };
-    const state = Buffer.from(JSON.stringify(stateData)).toString('base64');
+    const state = btoa(JSON.stringify(stateData)); // Use btoa instead of Buffer for browser compatibility
+    
+    console.log('🔐 Creating auth URL with state:', stateData);
+    console.log('🔑 Encoded state:', state);
     
     // Redirect to TrueLayer authorization
     const authUrl = `https://auth.truelayer.com/?response_type=code&client_id=financepal-415037&scope=accounts%20balance%20transactions&redirect_uri=${encodeURIComponent('https://finance-pal-vishalnatekar.replit.app/api/banking/callback')}&state=${state}&provider_id=${selectedBank}`;
+    console.log('🌐 Auth URL:', authUrl);
     window.location.href = authUrl;
   };
 
