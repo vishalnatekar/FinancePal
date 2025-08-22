@@ -50,8 +50,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.log('✅ User ID:', userId);
 
-      // Always use production domain for callback (matches TrueLayer console config)
-      const redirectUri = 'https://finance-pal-vishalnatekar.replit.app/api/banking/callback';
+      // Use current domain for callback
+      const currentDomain = req.get('host');
+      const redirectUri = `https://${currentDomain}/api/banking/callback`;
+      console.log('🌐 Using callback URL:', redirectUri);
       
       console.log('🔄 Exchanging code for token...');
       console.log('Redirect URI:', redirectUri);
@@ -754,8 +756,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TrueLayer Banking Integration Routes
   app.get("/api/banking/connect", requireFirebaseAuth, async (req: any, res) => {
     try {
-      // Always use production domain for callback (matches TrueLayer console config)
-      const redirectUri = 'https://finance-pal-vishalnatekar.replit.app/api/banking/callback';
+      // Use current domain for callback
+      const currentDomain = req.get('host');
+      const redirectUri = `https://${currentDomain}/api/banking/callback`;
+      console.log('🌐 Generated callback URL:', redirectUri);
       const authUrl = trueLayerService.generateAuthUrl(redirectUri);
       res.json({ authUrl });
     } catch (error) {
