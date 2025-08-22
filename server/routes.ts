@@ -1,23 +1,26 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import { openBankingService } from "./services/openBanking";
-import { categorizeTransaction } from "./services/categorization";
 import { insertAccountSchema, insertTransactionSchema, insertBudgetSchema, insertGoalSchema, insertBankConnectionSchema } from "@shared/schema";
 import { trueLayerService } from "./services/truelayer";
 
+// Simple middleware to extract Firebase user ID from headers
+function requireFirebaseAuth(req: any, res: any, next: any) {
+  const firebaseUid = req.headers['x-firebase-uid'];
+  if (!firebaseUid || typeof firebaseUid !== 'string') {
+    return res.status(401).json({ message: "Unauthorized - Firebase UID required" });
+  }
+  req.firebaseUid = firebaseUid;
+  next();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
 
   // Banking callback route (must be before other protected routes)
   app.get("/api/banking/callback", async (req: any, res) => {
     try {
       console.log('=== BANKING CALLBACK START ===');
       console.log('Query params:', req.query);
-      console.log('User authenticated:', req.isAuthenticated());
-      console.log('User claims:', req.user?.claims);
       
       const { code, state } = req.query;
       
@@ -26,17 +29,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.redirect('/?connection=error&reason=missing_code');
       }
 
-      // Check if user is authenticated, if not redirect to login
-      if (!req.isAuthenticated() || !req.user?.claims?.sub) {
-        console.log('❌ User not authenticated, redirecting to login');
-        console.log('Session ID:', req.sessionID);
-        console.log('Session data:', req.session);
-        // Store the callback URL to redirect after login
-        const callbackUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-        return res.redirect(`/api/login?returnTo=${encodeURIComponent(callbackUrl)}`);
+      // Extract user ID from state parameter (we'll modify the frontend to include this)
+      let userId = null;
+      try {
+        if (state) {
+          const stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
+          userId = stateData.userId;
+        }
+      } catch (e) {
+        console.log('Could not parse state parameter');
       }
 
-      const userId = req.user.claims.sub;
+      if (!userId) {
+        console.log('❌ No user ID found in state, redirecting to login');
+        return res.redirect('/?connection=error&reason=no_user_id');
+      }
       console.log('✅ User ID:', userId);
 
       // Always use production domain for callback (matches TrueLayer console config)
@@ -163,7 +170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('✅ Callback test endpoint hit');
     res.json({ 
       message: "Callback endpoint is accessible",
-      authenticated: req.isAuthenticated(),
+      authenticated: req.requireFirebaseAuth(),
       userId: req.user?.claims?.sub || null,
       sessionId: req.sessionID,
       hasSession: !!req.session
@@ -173,7 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Debug endpoint for session info
   app.get("/api/debug/session", (req: any, res) => {
     res.json({
-      authenticated: req.isAuthenticated(),
+      authenticated: req.requireFirebaseAuth(),
       sessionId: req.sessionID,
       userId: req.user?.claims?.sub || null,
       sessionExists: !!req.session,
@@ -181,11 +188,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Auth routes - Firebase compatible
+  app.get('/api/auth/user', requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const userId = req.firebaseUid;
+      let user = await storage.getUser(userId);
+      
+      // If user doesn't exist, create them (auto-provision from Firebase)
+      if (!user) {
+        user = await storage.upsertUser({
+          id: userId,
+          email: null, // Will be updated when we get user info from Firebase
+          firstName: null,
+          lastName: null,
+          profileImageUrl: null,
+        });
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -196,9 +215,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Protected routes - All require authentication
   
   // Account routes
-  app.get("/api/accounts", isAuthenticated, async (req: any, res) => {
+  app.get("/api/accounts", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       const accounts = await storage.getAccountsByUserId(userId);
       res.json(accounts);
     } catch (error) {
@@ -207,9 +226,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/accounts", isAuthenticated, async (req: any, res) => {
+  app.post("/api/accounts", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       const validatedData = insertAccountSchema.parse({ ...req.body, userId });
       const account = await storage.createAccount(validatedData);
       res.json(account);
@@ -219,7 +238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/accounts/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/accounts/:id", requireFirebaseAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       const account = await storage.updateAccount(id, req.body);
@@ -230,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/accounts/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/accounts/:id", requireFirebaseAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteAccount(id);
@@ -242,9 +261,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Transaction routes
-  app.get("/api/transactions", isAuthenticated, async (req: any, res) => {
+  app.get("/api/transactions", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       const limit = req.query.limit ? parseInt(req.query.limit) : 50;
       const transactions = await storage.getTransactionsByUserId(userId, limit);
       res.json(transactions);
@@ -254,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/transactions", isAuthenticated, async (req: any, res) => {
+  app.post("/api/transactions", requireFirebaseAuth, async (req: any, res) => {
     try {
       const validatedData = insertTransactionSchema.parse(req.body);
       const transaction = await storage.createTransaction(validatedData);
@@ -265,7 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/transactions/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/transactions/:id", requireFirebaseAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       const transaction = await storage.updateTransaction(id, req.body);
@@ -277,9 +296,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Budget routes
-  app.get("/api/budgets", isAuthenticated, async (req: any, res) => {
+  app.get("/api/budgets", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       const budgets = await storage.getBudgetsByUserId(userId);
       const transactions = await storage.getTransactionsByUserId(userId);
       
@@ -322,9 +341,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/budgets", isAuthenticated, async (req: any, res) => {
+  app.post("/api/budgets", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       const budgetData = {
         ...req.body,
         userId,
@@ -344,7 +363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/budgets/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/budgets/:id", requireFirebaseAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       const budget = await storage.updateBudget(id, req.body);
@@ -355,7 +374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/budgets/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/budgets/:id", requireFirebaseAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteBudget(id);
@@ -367,9 +386,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Goal routes
-  app.get("/api/goals", isAuthenticated, async (req: any, res) => {
+  app.get("/api/goals", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       const goals = await storage.getGoalsByUserId(userId);
       
       // Calculate progress for each goal
@@ -419,9 +438,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/goals", isAuthenticated, async (req: any, res) => {
+  app.post("/api/goals", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       const goalData = {
         ...req.body,
         userId,
@@ -436,7 +455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/goals/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/goals/:id", requireFirebaseAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       const goal = await storage.updateGoal(id, req.body);
@@ -447,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/goals/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/goals/:id", requireFirebaseAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteGoal(id);
@@ -459,9 +478,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Net worth routes
-  app.get("/api/net-worth", isAuthenticated, async (req: any, res) => {
+  app.get("/api/net-worth", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       const days = req.query.days ? parseInt(req.query.days) : 90; // Default to 90 days for better charts
       
       // Get net worth history
@@ -539,9 +558,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/net-worth/latest", isAuthenticated, async (req: any, res) => {
+  app.get("/api/net-worth/latest", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       const latest = await storage.getLatestNetWorth(userId);
       res.json(latest);
     } catch (error) {
@@ -550,9 +569,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/net-worth/calculate", isAuthenticated, async (req: any, res) => {
+  app.post("/api/net-worth/calculate", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       
       // Get all accounts for the user
       const accounts = await storage.getAccountsByUserId(userId);
@@ -589,7 +608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Open Banking routes
-  app.get("/api/banking/institutions", isAuthenticated, async (req, res) => {
+  app.get("/api/banking/institutions", requireFirebaseAuth, async (req, res) => {
     try {
       const institutions = await openBankingService.getInstitutions();
       res.json(institutions);
@@ -599,10 +618,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/banking/connect", isAuthenticated, async (req: any, res) => {
+  app.post("/api/banking/connect", requireFirebaseAuth, async (req: any, res) => {
     try {
       const { institutionId } = req.body;
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       
       // Connect to bank account through Open Banking
       const connection = await openBankingService.connectAccount(institutionId, {});
@@ -628,7 +647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/banking/sync/:accountId", isAuthenticated, async (req, res) => {
+  app.post("/api/banking/sync/:accountId", requireFirebaseAuth, async (req, res) => {
     try {
       const { accountId } = req.params;
       const account = await storage.getAccount(accountId);
@@ -669,9 +688,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analytics routes
-  app.get("/api/analytics/spending", isAuthenticated, async (req: any, res) => {
+  app.get("/api/analytics/spending", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       const { category, startDate, endDate } = req.query;
       
       const spending = await storage.getBudgetSpending(
@@ -688,9 +707,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/analytics/categories", isAuthenticated, async (req: any, res) => {
+  app.get("/api/analytics/categories", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       const { startDate, endDate } = req.query;
       
       const categoryData = await storage.getCategorizedTransactions(
@@ -707,7 +726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // TrueLayer Banking Integration Routes
-  app.get("/api/banking/connect", isAuthenticated, async (req: any, res) => {
+  app.get("/api/banking/connect", requireFirebaseAuth, async (req: any, res) => {
     try {
       // Always use production domain for callback (matches TrueLayer console config)
       const redirectUri = 'https://finance-pal-vishalnatekar.replit.app/api/banking/callback';
@@ -719,9 +738,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/banking/sync", isAuthenticated, async (req: any, res) => {
+  app.post("/api/banking/sync", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       
       // Get active bank connection
       const bankConnection = await storage.getActiveBankConnection(userId);
@@ -845,9 +864,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add manual fresh sync endpoint
-  app.post("/api/banking/force-sync", isAuthenticated, async (req: any, res) => {
+  app.post("/api/banking/force-sync", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       
       // Get active bank connection
       const bankConnection = await storage.getActiveBankConnection(userId);
@@ -930,9 +949,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/banking/status", isAuthenticated, async (req: any, res) => {
+  app.get("/api/banking/status", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       const bankConnections = await storage.getAllActiveBankConnections(userId);
       const accounts = await storage.getAccountsByUserId(userId);
       
@@ -962,9 +981,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/banking/disconnect", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/banking/disconnect", requireFirebaseAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.firebaseUid;
       await storage.deactivateBankConnection(userId);
       res.json({ success: true });
     } catch (error) {
@@ -973,7 +992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/banking/disconnect/:connectionId", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/banking/disconnect/:connectionId", requireFirebaseAuth, async (req: any, res) => {
     try {
       const { connectionId } = req.params;
       await storage.deactivateSpecificBankConnection(connectionId);

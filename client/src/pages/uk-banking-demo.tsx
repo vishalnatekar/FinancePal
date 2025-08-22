@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { University, ArrowRight, Shield, CheckCircle, Clock } from "lucide-react";
 import { FirebaseStatusBanner } from "@/components/FirebaseStatusBanner";
+import { auth } from "@/firebase";
 
 const UK_BANKS = [
   { id: "lloyds_bank_gb", name: "Lloyds Bank", logo: "🏦", popular: true },
@@ -30,10 +31,20 @@ export default function UKBankingDemo() {
     
     setConnectionStep("connecting");
     
-    // Simulate connection process
-    setTimeout(() => {
-      setConnectionStep("connected");
-    }, 2000);
+    // Redirect to TrueLayer authorization with state parameter containing user ID
+    const user = auth?.currentUser;
+    if (!user) {
+      alert('Please sign in first');
+      return;
+    }
+    
+    // Create state parameter with user ID for callback
+    const stateData = { userId: user.uid, bank: selectedBank };
+    const state = Buffer.from(JSON.stringify(stateData)).toString('base64');
+    
+    // Redirect to TrueLayer authorization
+    const authUrl = `https://auth.truelayer.com/?response_type=code&client_id=financepal-415037&scope=accounts%20balance%20transactions&redirect_uri=${encodeURIComponent('https://finance-pal-vishalnatekar.replit.app/api/banking/callback')}&state=${state}&provider_id=${selectedBank}`;
+    window.location.href = authUrl;
   };
 
   const popularBanks = UK_BANKS.filter(bank => bank.popular);
