@@ -71,18 +71,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Immediately sync bank data after connection
       try {
-        console.log('Starting automatic data sync for new bank connection...');
+        console.log('🔄 Starting automatic data sync for new bank connection...');
         
         // Fetch accounts from TrueLayer
+        console.log('📡 Fetching accounts from TrueLayer...');
         const trueLayerAccounts = await trueLayerService.getAccounts(tokenData.access_token);
+        console.log(`📊 Found ${trueLayerAccounts.length} accounts from TrueLayer`);
+        
         let syncedAccountsCount = 0;
         let syncedTransactionsCount = 0;
 
         for (const tlAccount of trueLayerAccounts) {
+          console.log(`🏦 Processing account: ${tlAccount.display_name} (${tlAccount.account_id})`);
+          
           // Check if account already exists
           let account = await storage.getAccountByExternalId(tlAccount.account_id);
           
           if (!account) {
+            console.log(`➕ Creating new account: ${tlAccount.display_name}`);
             // Create new account
             account = await storage.createAccount({
               userId,
@@ -91,30 +97,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
               type: tlAccount.account_type.toLowerCase(),
               currency: tlAccount.currency,
               institutionName: tlAccount.provider.display_name,
-              accountNumber: tlAccount.account_number.number || 'Hidden',
+              accountNumber: tlAccount.account_number?.number || 'Hidden',
               balance: '0', // Will be updated below
             });
             syncedAccountsCount++;
+            console.log(`✅ Account created with ID: ${account.id}`);
+          } else {
+            console.log(`📋 Using existing account: ${account.id}`);
           }
 
           // Get current balance
+          console.log(`💰 Fetching balance for account: ${tlAccount.account_id}`);
           const balance = await trueLayerService.getAccountBalance(tokenData.access_token, tlAccount.account_id);
+          console.log(`💷 Balance: ${balance.current} ${balance.currency}`);
+          
           await storage.updateAccount(account.id, {
             balance: balance.current.toString(),
             lastSynced: new Date(),
           });
 
-          // Get transactions (last 6 months to capture full history)
+          // Get transactions (last 3 months to capture recent history)
           const fromDate = new Date();
-          fromDate.setDate(fromDate.getDate() - 180);
+          fromDate.setDate(fromDate.getDate() - 90); // 3 months instead of 6 for faster initial sync
+          
+          console.log(`📄 Fetching transactions from ${fromDate.toISOString().split('T')[0]}...`);
           const transactions = await trueLayerService.getAccountTransactions(
             tokenData.access_token,
             tlAccount.account_id,
             fromDate.toISOString().split('T')[0]
           );
+          console.log(`📝 Found ${transactions.length} transactions`);
 
           // Save transactions
-          for (const tlTransaction of transactions) {
+          for (let i = 0; i < transactions.length; i++) {
+            const tlTransaction = transactions[i];
             const existingTransaction = await storage.getTransactionByExternalId(tlTransaction.transaction_id);
             
             if (!existingTransaction) {
@@ -135,6 +151,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 },
               });
               syncedTransactionsCount++;
+              
+              // Log progress every 10 transactions
+              if (syncedTransactionsCount % 10 === 0) {
+                console.log(`📊 Synced ${syncedTransactionsCount} transactions so far...`);
+              }
             }
           }
         }
@@ -144,17 +165,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastSynced: new Date(),
         });
 
-        console.log(`✅ Auto sync completed: ${syncedAccountsCount} accounts, ${syncedTransactionsCount} transactions`);
-      } catch (syncError) {
-        console.error('❌ Auto sync failed, but bank connection saved:', syncError);
-        // Don't fail the entire callback if sync fails
+        console.log(`🎉 Auto sync completed: ${syncedAccountsCount} accounts, ${syncedTransactionsCount} transactions`);
+      } catch (syncError: any) {
+        console.error('❌ Auto sync failed:', syncError.message);
+        console.error('Full sync error:', syncError);
+        // Don't fail the entire callback if sync fails - but log the error detail
       }
 
       console.log('=== BANKING CALLBACK END ===');
       // Redirect to frontend with success
       res.redirect('/?connection=success');
-    } catch (error) {
-      console.error("❌ Banking callback error:", error);
+    } catch (error: any) {
+      console.error("❌ Banking callback error:", error.message);
       console.error("Error details:", {
         message: error.message,
         stack: error.stack,
