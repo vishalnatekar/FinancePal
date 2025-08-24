@@ -713,6 +713,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('🔄 Completing banking connection for user:', userId);
       
+      // Ensure user exists in database first
+      let user = await storage.getUser(userId);
+      if (!user) {
+        console.log('👤 Creating user record in database:', userId);
+        // Use upsertUser instead of createUser to handle conflicts
+        user = await storage.upsertUser({
+          id: userId,
+          email: 'temp@example.com', // We'll update this later from Firebase user data
+          firstName: 'User',
+          lastName: '',
+          profileImageUrl: null,
+        });
+        console.log('✅ User created:', user);
+      }
+      
       // Build callback URI consistently
       const scheme = req.get('x-forwarded-proto') || 'https';
       const host = req.get('x-forwarded-host') || req.get('host');
