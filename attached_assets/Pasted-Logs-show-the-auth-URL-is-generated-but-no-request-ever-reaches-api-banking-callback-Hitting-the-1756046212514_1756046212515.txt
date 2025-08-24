@@ -1,0 +1,78 @@
+Logs show the auth URL is generated, but no request ever reaches /api/banking/callback.
+
+Hitting the callback directly (private window):
+GET /api/banking/callback?probe=1 → redirects to /auth/login.
+
+Status endpoint stays connected:false.
+
+Example log:
+
+Generated TrueLayer auth URL: https://auth.truelayer.com/?...&redirect_uri=https%3A%2F%2F<dev-domain>%2Fapi%2Fbanking%2Fcallback
+Redirect URI: https://<dev-domain>/api/banking/callback
+(No subsequent hit on /api/banking/callback)
+
+
+What I need from you
+
+Allowlist /api/banking/callback as a public route (i.e., not gated by Replit Auth).
+
+If Replit Auth is applied as middleware globally, please configure it to skip this path, or place my callback handler before the guard.
+
+Goal: TrueLayer can redirect to /api/banking/callback without being bounced to /auth/login.
+
+Keep the redirect URI stable & dynamic.
+
+We’re on TrueLayer Live, so we must use the same domain for the whole round-trip.
+
+Please confirm we’re building the callback like this on the server (Express example):
+
+const scheme = req.get('x-forwarded-proto') || 'https';
+const host   = req.get('x-forwarded-host') || req.get('host');
+const origin = `${scheme}://${host}`;
+const redirectUri = `${origin}/api/banking/callback`;
+
+
+Ensure the same redirect_uri string is used for authorize and token exchange.
+
+Use Live endpoints consistently.
+
+Authorize: https://auth.truelayer.com
+
+Token: https://auth.truelayer.com/connect/token
+
+API: https://api.truelayer.com
+
+Prefer a stable domain for Live.
+
+Please deploy to my stable .replit.app domain (or advise) and confirm that exact callback is used.
+
+I will add this exact URL to the TrueLayer Live Console:
+
+https://<stable-replit-app-domain>/api/banking/callback
+
+
+(Dev ...replit.dev domains rotate and cause mismatches.)
+
+PKCE & session independence.
+
+Ensure the OAuth state and code_verifier are stored server-side (DB/kv) before redirecting to TrueLayer, and looked up on the public callback so the exchange doesn’t rely on a session cookie.
+
+Temporary debug to verify.
+
+Please add (temporarily) a simple log in the callback to prove we receive the request:
+
+app.get('/api/banking/callback', (req, res) => {
+  console.log('CB HIT', { query: req.query, host: req.get('host') });
+  res.status(200).send('ok');
+});
+
+
+Also log the token-exchange error body if it fails, so we can spot invalid_redirect_uri/invalid_grant.
+
+Acceptance criteria
+
+Visiting /api/banking/callback?probe=1 does not redirect to /auth/login.
+
+Running the connect flow shows a server log “CB HIT …” immediately after bank consent.
+
+/api/banking/status returns connected:true with at least one connection, and transactions populate.
