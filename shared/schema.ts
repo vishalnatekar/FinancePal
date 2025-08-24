@@ -214,3 +214,14 @@ export type InsertNetWorthHistory = z.infer<typeof insertNetWorthHistorySchema>;
 
 export type BankConnection = typeof bankConnections.$inferSelect;
 export type InsertBankConnection = z.infer<typeof insertBankConnectionSchema>;
+
+// OAuth state storage for PKCE flow
+export const oauthStates = pgTable("oauth_states", {
+  state: varchar("state").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  codeVerifier: varchar("code_verifier"),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+export type OAuthState = typeof oauthStates.$inferSelect;

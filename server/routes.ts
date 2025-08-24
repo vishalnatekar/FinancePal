@@ -16,8 +16,13 @@ function requireFirebaseAuth(req: any, res: any, next: any) {
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
-  // Banking callback route (must be before other protected routes)
+  // PUBLIC Banking callback route (MUST be before auth middleware)
   app.get("/api/banking/callback", async (req: any, res) => {
+    console.log('CB HIT', { query: req.query, host: req.get('host') });
+    // Temporary debug endpoint
+    if (req.query.probe) {
+      return res.status(200).send('Callback endpoint is accessible without auth');
+    }
     try {
       console.log('=== BANKING CALLBACK START ===');
       console.log('Query params:', JSON.stringify(req.query, null, 2));
@@ -50,9 +55,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.log('✅ User ID:', userId);
 
-      // Use current domain for callback
-      const currentDomain = req.get('host');
-      const redirectUri = `https://${currentDomain}/api/banking/callback`;
+      // Build callback URI consistently
+      const scheme = req.get('x-forwarded-proto') || 'https';
+      const host = req.get('x-forwarded-host') || req.get('host');
+      const redirectUri = `${scheme}://${host}/api/banking/callback`;
       console.log('🌐 Using callback URL:', redirectUri);
       
       console.log('🔄 Exchanging code for token...');
@@ -756,9 +762,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TrueLayer Banking Integration Routes
   app.get("/api/banking/connect", requireFirebaseAuth, async (req: any, res) => {
     try {
-      // Use current domain for callback
-      const currentDomain = req.get('host');
-      const redirectUri = `https://${currentDomain}/api/banking/callback`;
+      // Build callback URI consistently 
+      const scheme = req.get('x-forwarded-proto') || 'https';
+      const host = req.get('x-forwarded-host') || req.get('host');
+      const redirectUri = `${scheme}://${host}/api/banking/callback`;
       console.log('🌐 Generated callback URL:', redirectUri);
       const authUrl = trueLayerService.generateAuthUrl(redirectUri);
       res.json({ authUrl });
