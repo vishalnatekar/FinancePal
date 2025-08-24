@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
 import { Loading } from "@/components/ui/loading";
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
+import { useEffect } from "react";
 import Dashboard from "@/pages/dashboard";
 import TransactionsPage from "@/pages/transactions";
 import BudgetPage from "@/pages/budget";
@@ -15,6 +16,41 @@ import NotFound from "@/pages/not-found";
 
 function Router() {
   const { user, loading, isAuthenticated, signInWithGoogle } = useFirebaseAuth();
+
+  // Handle banking callback parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const connection = urlParams.get('connection');
+    const code = urlParams.get('code');
+    
+    if (connection === 'success' && code && user?.uid) {
+      console.log('🏦 Banking callback detected, completing connection...');
+      
+      // Complete the banking connection
+      fetch('/api/banking/complete-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-firebase-uid': user.uid,
+        },
+        body: JSON.stringify({ code }),
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log('✅ Banking connection completed:', data);
+          // Clear URL parameters and redirect to dashboard
+          window.history.replaceState({}, document.title, '/');
+          window.location.reload(); // Refresh to update banking status
+        } else {
+          console.error('❌ Banking connection failed:', data);
+        }
+      })
+      .catch(error => {
+        console.error('❌ Banking connection error:', error);
+      });
+    }
+  }, [user]);
 
   if (loading) {
     return (

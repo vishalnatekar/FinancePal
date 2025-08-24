@@ -38,19 +38,19 @@ export default function UKBankingDemo() {
       return;
     }
     
-    // Create state parameter with user ID for callback
-    const stateData = { userId: user.uid, bank: selectedBank };
-    const state = btoa(JSON.stringify(stateData)); // Use btoa instead of Buffer for browser compatibility
+    // Store user ID in localStorage for callback retrieval (temporary solution)
+    localStorage.setItem('banking_user_id', user.uid);
+    localStorage.setItem('banking_selected_bank', selectedBank);
     
-    console.log('🔐 Creating auth URL with state:', stateData);
-    console.log('🔑 Encoded state:', state);
+    console.log('🔐 Stored user ID for callback:', user.uid);
+    console.log('🏦 Selected bank:', selectedBank);
     
     // Use current domain for callback URL
     const currentDomain = window.location.host;
     const callbackUrl = `https://${currentDomain}/api/banking/callback`;
     
-    // Redirect to TrueLayer authorization
-    const authUrl = `https://auth.truelayer.com/?response_type=code&client_id=financepal-415037&scope=accounts%20balance%20transactions&redirect_uri=${encodeURIComponent(callbackUrl)}&state=${state}&provider_id=${selectedBank}`;
+    // Let TrueLayer generate their own state parameter
+    const authUrl = `https://auth.truelayer.com/?response_type=code&client_id=financepal-415037&scope=accounts%20balance%20transactions&redirect_uri=${encodeURIComponent(callbackUrl)}&provider_id=${selectedBank}`;
     console.log('🌐 Callback URL:', callbackUrl);
     console.log('🌐 Auth URL:', authUrl);
     window.location.href = authUrl;

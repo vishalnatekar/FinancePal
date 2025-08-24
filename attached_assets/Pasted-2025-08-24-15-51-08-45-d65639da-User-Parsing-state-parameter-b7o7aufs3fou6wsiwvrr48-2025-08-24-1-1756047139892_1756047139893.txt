@@ -1,0 +1,84 @@
+2025-08-24 15:51:08.45
+d65639da
+User
+🔍 Parsing state parameter: b7o7aufs3fou6wsiwvrr48
+2025-08-24 15:51:08.45
+d65639da
+User
+❌ Could not parse state parameter: SyntaxError: Unexpected token 'o', "o�;j����.�"����" is not valid JSON
+2025-08-24 15:51:08.45
+d65639da
+User
+at JSON.parse (<anonymous>)
+2025-08-24 15:51:08.45
+d65639da
+User
+at file:///home/runner/workspace/dist/index.js:711:34
+2025-08-24 15:51:08.45
+d65639da
+User
+at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)
+2025-08-24 15:51:08.45
+d65639da
+User
+at next (/home/runner/workspace/node_modules/express/lib/router/route.js:149:13)
+2025-08-24 15:51:08.45
+d65639da
+User
+at Route.dispatch (/home/runner/workspace/node_modules/express/lib/router/route.js:119:3)
+2025-08-24 15:51:08.45
+d65639da
+User
+at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)
+2025-08-24 15:51:08.45
+d65639da
+User
+at /home/runner/workspace/node_modules/express/lib/router/index.js:284:15
+2025-08-24 15:51:08.45
+d65639da
+User
+at Function.process_params (/home/runner/workspace/node_modules/express/lib/router/index.js:346:12)
+2025-08-24 15:51:08.45
+d65639da
+User
+at next (/home/runner/workspace/node_modules/express/lib/router/index.js:280:10)
+2025-08-24 15:51:08.45
+d65639da
+User
+at file:///home/runner/workspace/dist/index.js:1656:3
+2025-08-24 15:51:08.45
+d65639da
+User
+Raw state: b7o7aufs3fou6wsiwvrr48
+2025-08-24 15:51:08.45
+d65639da
+User
+❌ No user ID found in state, redirecting to login
+2025-08-24 15:51:08.45
+d65639da
+User
+2:51:08 PM [express] GET /api/banking/callback 302 in 7ms
+2025-08-24 15:51:09.74
+d65639da
+User
+2:51:09 PM [express] GET /api/accounts 304 in 483ms :: []
+2025-08-24 15:51:09.75
+d65639da
+User
+2:51:09 PM [express] GET /api/goals 304 in 474ms :: []
+2025-08-24 15:51:09.75
+d65639da
+User
+2:51:09 PM [express] GET /api/transactions 304 in 472ms :: []
+2025-08-24 15:51:09.86
+d65639da
+User
+2:51:09 PM [express] GET /api/budgets 304 in 607ms :: []
+2025-08-24 15:51:09.98
+d65639da
+User
+2:51:09 PM [express] GET /api/net-worth 304 in 711ms :: {"current":null,"history":[]}
+2025-08-24 15:51:10.35
+d65639da
+User
+2:51:10 PM [express] GET /api/banking/status 304 in 229ms :: {"connected":false,"connections":[],"in

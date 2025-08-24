@@ -35,24 +35,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.redirect('/?connection=error&reason=missing_code');
       }
 
-      // Extract user ID from state parameter 
-      let userId = null;
-      try {
-        if (state) {
-          console.log('🔍 Parsing state parameter:', state);
-          const stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
-          console.log('📊 Parsed state data:', stateData);
-          userId = stateData.userId;
-        }
-      } catch (e) {
-        console.log('❌ Could not parse state parameter:', e);
-        console.log('Raw state:', state);
-      }
-
-      if (!userId) {
-        console.log('❌ No user ID found in state, redirecting to login');
-        return res.redirect('/?connection=error&reason=no_user_id');
-      }
+      // The state parameter from TrueLayer is their own generated value
+      console.log('🔍 TrueLayer state parameter:', state);
+      
+      // For now, redirect to frontend with success and let client handle user identification
+      // The frontend will need to identify the current user and make an API call to complete the connection
+      console.log('🔄 Redirecting to frontend with auth code for client-side user identification');
+      return res.redirect(`/?connection=success&code=${encodeURIComponent(code as string)}&state=${encodeURIComponent(state || '')}`);
+      
+      // The rest of this code will be moved to a separate API endpoint that the frontend calls
       console.log('✅ User ID:', userId);
 
       // Build callback URI consistently
@@ -707,6 +698,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Generate auth URL error:", error);
       res.status(500).json({ message: "Failed to generate authorization URL" });
+    }
+  });
+
+  // Complete banking connection after callback (called by frontend)
+  app.post("/api/banking/complete-connection", requireFirebaseAuth, async (req: any, res) => {
+    try {
+      const { code } = req.body;
+      const userId = req.firebaseUid;
+      
+      if (!code) {
+        return res.status(400).json({ message: "Authorization code is required" });
+      }
+
+      console.log('🔄 Completing banking connection for user:', userId);
+      
+      // Build callback URI consistently
+      const scheme = req.get('x-forwarded-proto') || 'https';
+      const host = req.get('x-forwarded-host') || req.get('host');
+      const redirectUri = `${scheme}://${host}/api/banking/callback`;
+      
+      console.log('🔄 Exchanging code for token...');
+      const tokenData = await trueLayerService.exchangeCodeForToken(code, redirectUri);
+      console.log('✅ Token exchange successful');
+
+      // Store bank connection
+      const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+      const bankConnection = await storage.createBankConnection({
+        userId,
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        tokenType: tokenData.token_type,
+        expiresAt,
+        scope: 'accounts balance transactions',
+      });
+
+      // Sync bank data immediately
+      console.log('🔄 Starting automatic data sync...');
+      const trueLayerAccounts = await trueLayerService.getAccounts(tokenData.access_token);
+      console.log(`📊 Found ${trueLayerAccounts.length} accounts`);
+      
+      let syncedAccountsCount = 0;
+      let syncedTransactionsCount = 0;
+
+      for (const tlAccount of trueLayerAccounts) {
+        let account = await storage.getAccountByExternalId(tlAccount.account_id);
+        
+        if (!account) {
+          account = await storage.createAccount({
+            userId,
+            externalId: tlAccount.account_id,
+            name: tlAccount.display_name,
+            type: tlAccount.account_type.toLowerCase(),
+            currency: tlAccount.currency,
+            institutionName: tlAccount.provider.display_name,
+            accountNumber: tlAccount.account_number?.number || 'Hidden',
+            balance: '0',
+          });
+          syncedAccountsCount++;
+        }
+
+        // Get current balance
+        const balance = await trueLayerService.getAccountBalance(tokenData.access_token, tlAccount.account_id);
+        await storage.updateAccount(account.id, {
+          balance: balance.current.toString(),
+          lastSynced: new Date(),
+        });
+
+        // Get transactions (last 3 months)
+        const fromDate = new Date();
+        fromDate.setDate(fromDate.getDate() - 90);
+        const transactions = await trueLayerService.getAccountTransactions(
+          tokenData.access_token,
+          tlAccount.account_id,
+          fromDate.toISOString().split('T')[0]
+        );
+
+        // Save transactions
+        for (const tlTransaction of transactions) {
+          const existingTransaction = await storage.getTransactionByExternalId(tlTransaction.transaction_id);
+          
+          if (!existingTransaction) {
+            const category = trueLayerService.categorizeTransaction(tlTransaction);
+            
+            await storage.createTransaction({
+              accountId: account.id,
+              externalId: tlTransaction.transaction_id,
+              amount: tlTransaction.amount.toString(),
+              description: tlTransaction.description,
+              date: new Date(tlTransaction.timestamp),
+              category,
+              categoryConfidence: '0.8',
+              metadata: {
+                merchantName: tlTransaction.merchant_name,
+                transactionType: tlTransaction.transaction_type,
+                trueLayerCategory: tlTransaction.transaction_category,
+              },
+            });
+            syncedTransactionsCount++;
+          }
+        }
+      }
+
+      await storage.updateBankConnection(bankConnection.id, {
+        lastSynced: new Date(),
+      });
+
+      res.json({ 
+        success: true, 
+        message: `Banking connection completed. Synced ${syncedAccountsCount} accounts and ${syncedTransactionsCount} transactions.`,
+        accountsCount: syncedAccountsCount,
+        transactionsCount: syncedTransactionsCount 
+      });
+    } catch (error: any) {
+      console.error("Complete banking connection error:", error);
+      res.status(500).json({ message: "Failed to complete banking connection", error: error.message });
     }
   });
 
