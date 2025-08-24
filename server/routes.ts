@@ -342,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const relevantTransactions = transactions.filter(transaction => {
           const transactionDate = new Date(transaction.date);
           const budgetStart = new Date(budget.startDate);
-          const budgetEnd = new Date(budget.endDate);
+          const budgetEnd = budget.endDate ? new Date(budget.endDate) : new Date();
           
           // Check if transaction is in the budget period and matches category
           return transaction.category === budget.category && 
@@ -641,85 +641,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Open Banking routes
+  // Legacy Open Banking routes (deprecated - using TrueLayer instead)
   app.get("/api/banking/institutions", requireFirebaseAuth, async (req, res) => {
     try {
-      const institutions = await openBankingService.getInstitutions();
-      res.json(institutions);
+      // Return empty array as we use TrueLayer now
+      res.json([]);
     } catch (error) {
       console.error("Get institutions error:", error);
       res.status(500).json({ message: "Failed to get institutions" });
     }
   });
 
-  app.post("/api/banking/connect", requireFirebaseAuth, async (req: any, res) => {
-    try {
-      const { institutionId } = req.body;
-      const userId = req.firebaseUid;
-      
-      // Connect to bank account through Open Banking
-      const connection = await openBankingService.connectAccount(institutionId, {});
-      
-      // Create accounts in our database
-      for (const account of connection.accounts) {
-        await storage.createAccount({
-          userId,
-          externalId: account.id,
-          name: account.name,
-          type: account.type as any,
-          balance: account.balance,
-          maskedNumber: account.maskedNumber,
-          institutionName: connection.institution.name,
-          isActive: true,
-        });
-      }
-      
-      res.json(connection);
-    } catch (error) {
-      console.error("Connect bank error:", error);
-      res.status(500).json({ message: "Failed to connect bank account" });
-    }
-  });
+  // Removed legacy connect route - using TrueLayer banking/connect instead
 
-  app.post("/api/banking/sync/:accountId", requireFirebaseAuth, async (req, res) => {
-    try {
-      const { accountId } = req.params;
-      const account = await storage.getAccount(accountId);
-      
-      if (!account) {
-        return res.status(404).json({ message: "Account not found" });
-      }
-      
-      // Fetch transactions from Open Banking API
-      const transactionData = await openBankingService.getTransactions(account.externalId!);
-      
-      // Save transactions to database
-      for (const txn of transactionData.transactions) {
-        const category = categorizeTransaction(txn.description);
-        
-        await storage.createTransaction({
-          accountId: account.id,
-          externalId: txn.id,
-          amount: txn.amount,
-          description: txn.description,
-          date: new Date(txn.date),
-          category: category.category,
-          categoryConfidence: category.confidence,
-          isManuallyOverridden: false,
-        });
-      }
-      
-      // Update account balance
-      await storage.updateAccount(accountId, {
-        balance: transactionData.currentBalance,
-      });
-      
-      res.json({ success: true, transactionCount: transactionData.transactions.length });
-    } catch (error) {
-      console.error("Sync transactions error:", error);
-      res.status(500).json({ message: "Failed to sync transactions" });
-    }
-  });
+  // Removed legacy sync route - using TrueLayer banking/sync instead
 
   // Analytics routes
   app.get("/api/analytics/spending", requireFirebaseAuth, async (req: any, res) => {
@@ -993,7 +928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const accounts = await storage.getAccountsByUserId(userId);
       
       // Get unique institutions from accounts
-      const institutions = [...new Set(accounts.map(acc => acc.institutionName).filter(Boolean))];
+      const institutions = Array.from(new Set(accounts.map(acc => acc.institutionName).filter(Boolean)));
       
       // Find the most recent sync time across all connections
       const lastSynced = bankConnections
