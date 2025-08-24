@@ -49,10 +49,10 @@ The system uses a relational schema with the following core entities:
 
 ### Authentication and Authorization
 - **Primary Method**: Firebase Authentication with Google OAuth (fully implemented)
-- **Client-Side**: Firebase Auth with react-firebase-hooks for state management
+- **Client-Side**: Firebase Auth with useFirebaseAuth hook for state management
 - **Security**: Client-side Firebase authentication with Google OAuth provider
-- **User Flow**: Direct Google OAuth integration without server-side sessions
-- **Migration**: Switched from Replit SSO to Google-only authentication for better UX
+- **User Flow**: Direct Google OAuth integration with server-side Firebase UID validation
+- **Architecture**: Clean separation - Firebase handles auth, server validates UIDs in middleware
 
 ### Transaction Categorization System
 - **Rule-Based Engine**: Keyword matching and merchant pattern recognition

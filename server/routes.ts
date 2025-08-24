@@ -632,20 +632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Legacy Open Banking routes (deprecated - using TrueLayer instead)
-  app.get("/api/banking/institutions", requireFirebaseAuth, async (req, res) => {
-    try {
-      // Return empty array as we use TrueLayer now
-      res.json([]);
-    } catch (error) {
-      console.error("Get institutions error:", error);
-      res.status(500).json({ message: "Failed to get institutions" });
-    }
-  });
-
-  // Removed legacy connect route - using TrueLayer banking/connect instead
-
-  // Removed legacy sync route - using TrueLayer banking/sync instead
+  // Legacy routes removed - using TrueLayer instead
 
   // Analytics routes
   app.get("/api/analytics/spending", requireFirebaseAuth, async (req: any, res) => {

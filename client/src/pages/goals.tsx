@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Target, Calendar, TrendingUp } from "lucide-react";
+import { Plus, Edit, Trash2, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -487,14 +487,12 @@ export default function GoalsPage() {
                   
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-green-500" />
                       <span>
                         {(goal.progress ?? 0).toFixed(1)}% complete
                       </span>
                     </div>
                     {goal.targetDate && (
                       <div className="flex items-center gap-2 text-right justify-end">
-                        <Calendar className="h-4 w-4 text-blue-500" />
                         <span>
                           Due {format(new Date(goal.targetDate), 'MMM dd, yyyy')}
                         </span>
