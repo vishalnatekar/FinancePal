@@ -44,7 +44,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.redirect(`/?connection=success&code=${encodeURIComponent(code as string)}&state=${encodeURIComponent(state || '')}`);
       
       // The rest of this code will be moved to a separate API endpoint that the frontend calls
-      console.log('✅ User ID:', userId);
 
       // Build callback URI consistently
       const scheme = req.get('x-forwarded-proto') || 'https';
