@@ -717,15 +717,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let user = await storage.getUser(userId);
       if (!user) {
         console.log('👤 Creating user record in database:', userId);
-        // Use upsertUser instead of createUser to handle conflicts
+        // Create user with unique email based on Firebase UID to avoid conflicts
+        const uniqueEmail = `user-${userId.slice(-8)}@firebase-temp.com`;
         user = await storage.upsertUser({
           id: userId,
-          email: 'temp@example.com', // We'll update this later from Firebase user data
+          email: uniqueEmail,
           firstName: 'User',
           lastName: '',
           profileImageUrl: null,
         });
-        console.log('✅ User created:', user);
+        console.log('✅ User created with unique email:', user);
       }
       
       // Build callback URI consistently
