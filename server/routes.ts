@@ -735,8 +735,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const redirectUri = `${scheme}://${host}/api/banking/callback`;
       
       console.log('🔄 Exchanging code for token...');
-      const tokenData = await trueLayerService.exchangeCodeForToken(code, redirectUri);
-      console.log('✅ Token exchange successful');
+      console.log('Code received:', code.substring(0, 20) + '...');
+      console.log('Redirect URI:', redirectUri);
+      
+      let tokenData;
+      try {
+        tokenData = await trueLayerService.exchangeCodeForToken(code, redirectUri);
+        console.log('✅ Token exchange successful');
+        console.log('Token type:', tokenData.token_type);
+        console.log('Scope:', tokenData.scope);
+      } catch (tokenError: any) {
+        console.error('❌ TrueLayer token exchange failed:', tokenError.message);
+        return res.status(500).json({ 
+          message: 'Failed to complete banking connection', 
+          error: `TrueLayer token exchange failed: ${tokenError.message}`,
+          hint: 'Try starting a fresh banking connection - the authorization code may have expired'
+        });
+      }
 
       // Store bank connection
       const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
