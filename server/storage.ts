@@ -23,7 +23,7 @@ import {
   type InsertBankConnection,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (IMPORTANT) these user operations are mandatory for Replit Auth.
@@ -405,17 +405,48 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deactivateBankConnection(userId: string): Promise<void> {
+    // First deactivate all bank connections for the user
     await db
       .update(bankConnections)
       .set({ isActive: false })
       .where(eq(bankConnections.userId, userId));
+    
+    // Note: Transactions will be filtered out automatically when we query only active accounts
+    
+    // Then deactivate all associated accounts
+    await db
+      .update(accounts)
+      .set({ isActive: false })
+      .where(eq(accounts.userId, userId));
   }
 
   async deactivateSpecificBankConnection(connectionId: string): Promise<void> {
+    // Get the bank connection to find the associated user
+    const [connection] = await db
+      .select()
+      .from(bankConnections)
+      .where(eq(bankConnections.id, connectionId))
+      .limit(1);
+    
+    if (!connection) {
+      throw new Error('Bank connection not found');
+    }
+    
+    // Deactivate the specific bank connection
     await db
       .update(bankConnections)
       .set({ isActive: false })
       .where(eq(bankConnections.id, connectionId));
+    
+    // Note: Transactions will be filtered out automatically when we query only active accounts
+    
+    // Deactivate all accounts associated with this user
+    // Note: This assumes one bank connection per user. If you want to support multiple bank connections,
+    // you would need to track which accounts belong to which connection
+    await db
+      .update(accounts)
+      .set({ isActive: false })
+      .where(eq(accounts.userId, connection.userId));
   }
 
   async getAccountByExternalId(externalId: string): Promise<Account | undefined> {

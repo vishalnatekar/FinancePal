@@ -1,14 +1,46 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { University, CreditCard, Building2, Clock } from "lucide-react";
+import { University, CreditCard, Building2, Clock, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import type { Account } from "@shared/schema";
 
 export default function AccountsPage() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
   const { data: accounts, isLoading } = useQuery<Account[]>({
     queryKey: ["/api/accounts"],
+  });
+  
+  // Disconnect all accounts mutation
+  const disconnectAllMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("DELETE", "/api/banking/disconnect");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "All Accounts Disconnected",
+        description: "Successfully disconnected all bank accounts and removed associated transactions.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/banking/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/networth"] });
+    },
+    onError: (error) => {
+      console.error("Disconnect all error:", error);
+      toast({
+        title: "Disconnect Failed",
+        description: "Failed to disconnect accounts. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const getAccountIcon = (type: string) => {
@@ -85,8 +117,28 @@ export default function AccountsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6">
-          {accounts?.map((account) => {
+        <>
+          <div className="mb-6 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {accounts?.filter(acc => acc.isActive).length || 0} active account{accounts?.filter(acc => acc.isActive).length !== 1 ? 's' : ''} connected
+              </p>
+            </div>
+            {accounts?.some(acc => acc.isActive) && (
+              <Button
+                onClick={() => disconnectAllMutation.mutate()}
+                disabled={disconnectAllMutation.isPending}
+                variant="outline"
+                className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                data-testid="button-disconnect-all"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {disconnectAllMutation.isPending ? "Disconnecting..." : "Disconnect All Accounts"}
+              </Button>
+            )}
+          </div>
+          <div className="grid gap-6">
+            {accounts?.map((account) => {
             const IconComponent = getAccountIcon(account.type);
             const balance = parseFloat(account.balance);
             
@@ -149,11 +201,28 @@ export default function AccountsPage() {
                       <Badge variant="destructive">Inactive</Badge>
                     </div>
                   )}
+                  
+                  {account.isActive && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                      <Button
+                        onClick={() => disconnectAllMutation.mutate()}
+                        disabled={disconnectAllMutation.isPending}
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                        data-testid={`button-disconnect-${account.id}`}
+                      >
+                        <Trash2 className="h-3 w-3 mr-2" />
+                        {disconnectAllMutation.isPending ? "Disconnecting..." : "Disconnect Account"}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
-          })}
-        </div>
+            })}
+          </div>
+        </>
       )}
     </div>
   );
