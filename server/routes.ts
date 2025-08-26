@@ -4,6 +4,14 @@ import { storage } from "./storage";
 import { insertAccountSchema, insertTransactionSchema, insertBudgetSchema, insertGoalSchema, insertBankConnectionSchema } from "@shared/schema";
 import { trueLayerService } from "./services/truelayer";
 
+// In-memory store for processed authorization codes to prevent reuse
+const processedCodes = new Set<string>();
+
+// Clean up old codes every hour (authorization codes expire in 10 minutes anyway)
+setInterval(() => {
+  processedCodes.clear();
+}, 60 * 60 * 1000);
+
 // Simple middleware to extract Firebase user ID from headers
 function requireFirebaseAuth(req: any, res: any, next: any) {
   const firebaseUid = req.headers['x-firebase-uid'];
@@ -704,6 +712,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Authorization code is required" });
       }
 
+      // Check if this authorization code has already been processed
+      if (processedCodes.has(code)) {
+        console.log('❌ Authorization code already processed:', code.substring(0, 10) + '...');
+        return res.status(400).json({ 
+          success: false,
+          message: "Authorization code has already been used", 
+          hint: "Please start a fresh banking connection - authorization codes can only be used once."
+        });
+      }
+
+      // Mark this code as processed immediately
+      processedCodes.add(code);
       console.log('🔄 Completing banking connection for user:', userId);
       
       // Ensure user exists in database first
@@ -737,10 +757,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Token exchange successful
       } catch (tokenError: any) {
         console.error('❌ TrueLayer token exchange failed:', tokenError.message);
+        
+        // Provide specific error messages for common issues
+        let errorMessage = 'Failed to complete banking connection';
+        let hint = 'Please try connecting your bank again';
+        
+        if (tokenError.message.includes('invalid_grant')) {
+          errorMessage = 'Authorization code has expired or been used already';
+          hint = 'Authorization codes can only be used once and expire quickly. Please start a fresh banking connection.';
+        } else if (tokenError.message.includes('400')) {
+          errorMessage = 'Invalid authorization request';
+          hint = 'There was an issue with the banking authorization. Please try connecting again.';
+        }
+        
         return res.status(500).json({ 
-          message: 'Failed to complete banking connection', 
+          success: false,
+          message: errorMessage, 
           error: `TrueLayer token exchange failed: ${tokenError.message}`,
-          hint: 'Try starting a fresh banking connection - the authorization code may have expired'
+          hint
         });
       }
 

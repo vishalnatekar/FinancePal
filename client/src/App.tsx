@@ -26,6 +26,9 @@ function Router() {
     if (connection === 'success' && code && user?.uid) {
       console.log('🏦 Banking callback detected, completing connection...');
       
+      // Clear URL parameters immediately to prevent reuse of authorization code
+      window.history.replaceState({}, document.title, '/');
+      
       // Complete the banking connection
       fetch('/api/banking/complete-connection', {
         method: 'POST',
@@ -49,8 +52,6 @@ function Router() {
         if (data.success) {
           console.log('✅ Banking connection completed:', data);
           alert(`Banking connection successful! Synced ${data.accountsCount || 0} accounts and ${data.transactionsCount || 0} transactions.`);
-          // Clear URL parameters and redirect to dashboard
-          window.history.replaceState({}, document.title, '/');
           window.location.reload(); // Refresh to update banking status
         } else {
           console.error('❌ Banking connection failed:', data);
@@ -59,7 +60,11 @@ function Router() {
       })
       .catch(error => {
         console.error('❌ Banking connection error:', error);
-        alert(`Banking connection error: ${error.message}`);
+        if (error.message.includes('invalid_grant')) {
+          alert('Banking connection failed: The authorization code has expired or been used already. Please try connecting your bank again.');
+        } else {
+          alert(`Banking connection error: ${error.message}`);
+        }
       });
     }
   }, [user]);
