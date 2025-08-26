@@ -35,19 +35,31 @@ function Router() {
         },
         body: JSON.stringify({ code }),
       })
-      .then(response => response.json())
+      .then(async response => {
+        console.log('📡 API Response Status:', response.status);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ API Error Response:', errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        return response.json();
+      })
       .then(data => {
+        console.log('📊 API Response Data:', data);
         if (data.success) {
           console.log('✅ Banking connection completed:', data);
+          alert(`Banking connection successful! Synced ${data.accountsCount || 0} accounts and ${data.transactionsCount || 0} transactions.`);
           // Clear URL parameters and redirect to dashboard
           window.history.replaceState({}, document.title, '/');
           window.location.reload(); // Refresh to update banking status
         } else {
           console.error('❌ Banking connection failed:', data);
+          alert(`Banking connection failed: ${data.message || 'Unknown error'}`);
         }
       })
       .catch(error => {
         console.error('❌ Banking connection error:', error);
+        alert(`Banking connection error: ${error.message}`);
       });
     }
   }, [user]);

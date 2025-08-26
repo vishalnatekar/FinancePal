@@ -833,7 +833,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("Complete banking connection error:", error);
-      res.status(500).json({ message: "Failed to complete banking connection", error: error.message });
+      console.error("Error stack:", error.stack);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to complete banking connection", 
+        error: error.message,
+        details: error.stack 
+      });
     }
   });
 
