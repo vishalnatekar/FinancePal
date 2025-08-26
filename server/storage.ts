@@ -91,20 +91,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(userData: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
-  }
+
 
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
@@ -113,7 +100,10 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          ...userData,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
           updatedAt: new Date(),
         },
       })
@@ -126,17 +116,31 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
-  // Removed getUserByGoogleId - not needed with Replit Auth
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    // For Firebase authentication compatibility
+    const [user] = await db.select().from(users).where(eq(users.id, googleId));
+    return user || undefined;
+  }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+  async createUser(userData: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .returning();
     return user;
   }
 
-  async updateUser(id: string, user: Partial<InsertUser>): Promise<User> {
+  async updateUser(id: string, userData: Partial<InsertUser>): Promise<User> {
+    const updateData: any = {};
+    if (userData.email !== undefined) updateData.email = userData.email;
+    if (userData.firstName !== undefined) updateData.firstName = userData.firstName;
+    if (userData.lastName !== undefined) updateData.lastName = userData.lastName;
+    if (userData.profileImageUrl !== undefined) updateData.profileImageUrl = userData.profileImageUrl;
+    updateData.updatedAt = new Date();
+
     const [updatedUser] = await db
       .update(users)
-      .set(user)
+      .set(updateData)
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
@@ -377,14 +381,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(bankConnections.createdAt))
       .limit(1);
     return connection || undefined;
-  }
-
-  async getAllActiveBankConnections(): Promise<BankConnection[]> {
-    return await db
-      .select()
-      .from(bankConnections)
-      .where(eq(bankConnections.isActive, true))
-      .orderBy(desc(bankConnections.createdAt));
   }
 
   async getAllActiveBankConnections(userId: string): Promise<BankConnection[]> {

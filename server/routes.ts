@@ -44,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.redirect(`/?connection=success&code=${encodeURIComponent(code as string)}&state=${encodeURIComponent(state || '')}`);
       
       // The rest of this code will be moved to a separate API endpoint that the frontend calls
-
+      /*
       // Build callback URI consistently
       const scheme = req.get('x-forwarded-proto') || 'https';
       const host = req.get('x-forwarded-host') || req.get('host');
@@ -60,6 +60,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresIn: tokenData.expires_in
       });
 
+      // This code is no longer used - handled by frontend
+      const userId = req.firebaseUid; // This would need to be defined if we ever use this code
+      
       // Save the bank connection
       const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
       const bankConnection = await storage.createBankConnection({
@@ -177,6 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('=== BANKING CALLBACK END ===');
       // Redirect to frontend with success
       res.redirect('/?connection=success');
+      */
     } catch (error: any) {
       console.error("❌ Banking callback error:", error.message);
       console.error("Error details:", {
@@ -729,7 +733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tokenData = await trueLayerService.exchangeCodeForToken(code, redirectUri);
         console.log('✅ Token exchange successful');
         console.log('Token type:', tokenData.token_type);
-        console.log('Scope:', tokenData.scope);
+        // Token exchange successful
       } catch (tokenError: any) {
         console.error('❌ TrueLayer token exchange failed:', tokenError.message);
         return res.status(500).json({ 
@@ -1105,7 +1109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('Starting automatic daily bank sync...');
         
         // Get all active bank connections
-        const connections = await storage.getAllActiveBankConnections();
+        const connections = await storage.getAllActiveBankConnections("");
         
         for (const connection of connections) {
           try {
