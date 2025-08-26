@@ -41,14 +41,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For now, redirect to frontend with success and let client handle user identification
       // The frontend will need to identify the current user and make an API call to complete the connection
       console.log('🔄 Redirecting to frontend with auth code for client-side user identification');
-      return res.redirect(`/?connection=success&code=${encodeURIComponent(code as string)}&state=${encodeURIComponent(state || '')}`);
+      
+      // Determine the current domain and redirect appropriately
+      const scheme = req.get('x-forwarded-proto') || 'https';
+      const host = req.get('x-forwarded-host') || req.get('host');
+      const frontendUrl = `${scheme}://${host}/?connection=success&code=${encodeURIComponent(code as string)}&state=${encodeURIComponent(state || '')}`;
+      
+      console.log('🌐 Redirecting to:', frontendUrl);
+      return res.redirect(frontendUrl);
       
       // The rest of this code will be moved to a separate API endpoint that the frontend calls
       /*
-      // Build callback URI consistently
-      const scheme = req.get('x-forwarded-proto') || 'https';
-      const host = req.get('x-forwarded-host') || req.get('host');
-      const redirectUri = `${scheme}://${host}/api/banking/callback`;
+      // Use the whitelisted redirect URI from TrueLayer console
+      const redirectUri = 'https://myfinancepal.co.uk/api/banking/callback';
       console.log('🌐 Using callback URL:', redirectUri);
       
       console.log('🔄 Exchanging code for token...');
@@ -678,11 +683,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TrueLayer Banking Integration Routes
   app.get("/api/banking/connect", requireFirebaseAuth, async (req: any, res) => {
     try {
-      // Build callback URI consistently 
-      const scheme = req.get('x-forwarded-proto') || 'https';
-      const host = req.get('x-forwarded-host') || req.get('host');
-      const redirectUri = `${scheme}://${host}/api/banking/callback`;
-      console.log('🌐 Generated callback URL:', redirectUri);
+      // Use the whitelisted redirect URI from TrueLayer console
+      const redirectUri = 'https://myfinancepal.co.uk/api/banking/callback';
+      console.log('🌐 Using whitelisted callback URL:', redirectUri);
       const authUrl = trueLayerService.generateAuthUrl(redirectUri);
       res.json({ authUrl });
     } catch (error) {
@@ -719,10 +722,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('✅ User created with unique email:', user);
       }
       
-      // Build callback URI consistently
-      const scheme = req.get('x-forwarded-proto') || 'https';
-      const host = req.get('x-forwarded-host') || req.get('host');
-      const redirectUri = `${scheme}://${host}/api/banking/callback`;
+      // Use the whitelisted redirect URI from TrueLayer console  
+      const redirectUri = 'https://myfinancepal.co.uk/api/banking/callback';
       
       console.log('🔄 Exchanging code for token...');
       console.log('Code received:', code.substring(0, 20) + '...');

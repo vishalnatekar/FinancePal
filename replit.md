@@ -73,14 +73,15 @@ The backend exposes RESTful endpoints for:
 
 ### Banking Integration (TrueLayer Implementation)
 - **Provider**: TrueLayer - Market leader with 99% UK bank coverage
-- **Current Status**: Sandbox integration implemented and functional
-- **Client ID**: sandbox-financepal-415037 (configured for development)
-- **Redirect URI**: https://finance-pal-vishalnatekar.replit.app/api/banking/callback
+- **Current Status**: Live integration implemented and functional
+- **Client ID**: financepal-415037 (configured for production)
+- **Redirect URI**: https://myfinancepal.co.uk/api/banking/callback
 - **Auth Flow**: OAuth 2.0 with PKCE support for secure bank connections
 - **Supported Banks**: All major UK banks including Lloyds, Barclays, HSBC, NatWest, Santander, Halifax, Nationwide, Monzo, Starling, Revolut
 - **Data Types**: Account balances, transaction history, and account metadata
 - **Compliance**: FCA regulated Open Banking standards and PSD2
-- **Setup Note**: Redirect URI must be whitelisted in TrueLayer Console App Settings
+- **Setup Note**: Fixed redirect URI mismatch - using whitelisted URI for token exchange with dynamic frontend redirect
+- **Domain Handling**: Callback endpoint redirects to current domain after successful bank authentication
 
 ### Authentication Services
 - **Firebase Authentication**: Google OAuth integration for secure user authentication
