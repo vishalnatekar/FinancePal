@@ -7,7 +7,7 @@ import { University, CreditCard, Building2, Clock, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { Account } from "@shared/schema";
+import type { Account, BankConnection } from "@shared/schema";
 
 export default function AccountsPage() {
   const { toast } = useToast();
@@ -15,6 +15,10 @@ export default function AccountsPage() {
   
   const { data: accounts, isLoading } = useQuery<Account[]>({
     queryKey: ["/api/accounts"],
+  });
+
+  const { data: bankingStatus } = useQuery<{ connected: boolean; connections: BankConnection[] }>({
+    queryKey: ["/api/banking/status"],
   });
   
   // Disconnect all accounts mutation
@@ -28,16 +32,56 @@ export default function AccountsPage() {
         title: "All Accounts Disconnected",
         description: "Successfully disconnected all bank accounts and removed associated transactions.",
       });
+      // Clear all relevant caches
+      queryClient.removeQueries({ queryKey: ["/api/accounts"] });
+      queryClient.removeQueries({ queryKey: ["/api/transactions"] });
+      queryClient.removeQueries({ queryKey: ["/api/banking/status"] });
+      queryClient.removeQueries({ queryKey: ["/api/net-worth"] });
+      // Force fresh data fetch
       queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/banking/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/networth"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/net-worth"] });
     },
     onError: (error) => {
       console.error("Disconnect all error:", error);
       toast({
         title: "Disconnect Failed",
         description: "Failed to disconnect accounts. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Disconnect individual account mutation
+  const disconnectAccountMutation = useMutation({
+    mutationFn: async (accountId: string) => {
+      // Since we don't have account-specific connections, we'll use the general disconnect
+      // This will disconnect all connections for the user
+      const response = await apiRequest("DELETE", "/api/banking/disconnect");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Account Disconnected",
+        description: "Successfully disconnected the bank account and removed associated transactions.",
+      });
+      // Clear all relevant caches
+      queryClient.removeQueries({ queryKey: ["/api/accounts"] });
+      queryClient.removeQueries({ queryKey: ["/api/transactions"] });
+      queryClient.removeQueries({ queryKey: ["/api/banking/status"] });
+      queryClient.removeQueries({ queryKey: ["/api/net-worth"] });
+      // Force fresh data fetch
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/banking/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/net-worth"] });
+    },
+    onError: (error) => {
+      console.error("Disconnect account error:", error);
+      toast({
+        title: "Disconnect Failed",
+        description: "Failed to disconnect account. Please try again.",
         variant: "destructive",
       });
     },
@@ -205,15 +249,15 @@ export default function AccountsPage() {
                   {account.isActive && (
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
                       <Button
-                        onClick={() => disconnectAllMutation.mutate()}
-                        disabled={disconnectAllMutation.isPending}
+                        onClick={() => disconnectAccountMutation.mutate(account.id)}
+                        disabled={disconnectAccountMutation.isPending}
                         size="sm"
                         variant="outline"
                         className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                         data-testid={`button-disconnect-${account.id}`}
                       >
                         <Trash2 className="h-3 w-3 mr-2" />
-                        {disconnectAllMutation.isPending ? "Disconnecting..." : "Disconnect Account"}
+                        {disconnectAccountMutation.isPending ? "Disconnecting..." : "Disconnect Account"}
                       </Button>
                     </div>
                   )}

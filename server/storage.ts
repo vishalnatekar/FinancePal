@@ -201,7 +201,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(transactions)
       .innerJoin(accounts, eq(transactions.accountId, accounts.id))
-      .where(eq(accounts.userId, userId))
+      .where(and(eq(accounts.userId, userId), eq(accounts.isActive, true)))
       .orderBy(desc(transactions.date))
       .limit(limit);
   }
