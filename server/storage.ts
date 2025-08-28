@@ -436,13 +436,11 @@ export class DatabaseStorage implements IStorage {
     
     // Note: Transactions will be filtered out automatically when we query only active accounts
     
-    // Deactivate all accounts associated with this user
-    // Note: This assumes one bank connection per user. If you want to support multiple bank connections,
-    // you would need to track which accounts belong to which connection
+    // Deactivate only accounts associated with this specific bank connection
     await db
       .update(accounts)
       .set({ isActive: false })
-      .where(eq(accounts.userId, connection.userId));
+      .where(eq(accounts.bankConnectionId, connectionId));
   }
 
   async getAccountByExternalId(externalId: string): Promise<Account | undefined> {

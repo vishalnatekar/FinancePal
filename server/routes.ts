@@ -827,6 +827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`➕ Creating new account: ${tlAccount.display_name}`);
             account = await storage.createAccount({
               userId,
+              bankConnectionId: bankConnection.id,
               externalId: tlAccount.account_id,
               name: tlAccount.display_name,
               type: tlAccount.account_type.toLowerCase(),
@@ -976,6 +977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Create new account
           account = await storage.createAccount({
             userId,
+            bankConnectionId: bankConnection.id,
             externalId: tlAccount.account_id,
             name: tlAccount.display_name,
             type: tlAccount.account_type.toLowerCase(),

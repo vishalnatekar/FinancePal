@@ -43,6 +43,7 @@ export const bankConnections = pgTable("bank_connections", {
 export const accounts = pgTable("accounts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  bankConnectionId: varchar("bank_connection_id").references(() => bankConnections.id, { onDelete: "cascade" }),
   externalId: text("external_id").unique(),
   name: text("name").notNull(),
   type: text("type").notNull(), // checking, savings, credit_card, etc.
