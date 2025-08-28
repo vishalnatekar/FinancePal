@@ -82,6 +82,8 @@ The backend exposes RESTful endpoints for:
 - **Compliance**: FCA regulated Open Banking standards and PSD2
 - **Setup Note**: Fixed redirect URI mismatch - using whitelisted URI for token exchange with dynamic frontend redirect
 - **Domain Handling**: Callback endpoint redirects to current domain after successful bank authentication
+- **Transaction History**: Downloads 6 months of transaction history during initial sync
+- **Status**: Banking connection fully functional with HSBC and other UK banks (August 2024)
 
 ### Authentication Services
 - **Firebase Authentication**: Google OAuth integration for secure user authentication

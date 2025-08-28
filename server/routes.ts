@@ -854,9 +854,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error(`❌ Failed to fetch balance for ${tlAccount.display_name}:`, balanceError.message);
           }
 
-          // Get transactions (last 3 months)
+          // Get transactions (last 6 months for more comprehensive history)
           const fromDate = new Date();
-          fromDate.setDate(fromDate.getDate() - 90);
+          fromDate.setDate(fromDate.getDate() - 180);
           console.log(`🔍 Fetching transactions for account ${tlAccount.display_name} from ${fromDate.toISOString().split('T')[0]}`);
           
           let transactions: any[] = [];
