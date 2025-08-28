@@ -797,71 +797,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let syncedAccountsCount = 0;
       let syncedTransactionsCount = 0;
 
-      for (const tlAccount of trueLayerAccounts) {
-        let account = await storage.getAccountByExternalId(tlAccount.account_id);
+      for (let i = 0; i < trueLayerAccounts.length; i++) {
+        const tlAccount = trueLayerAccounts[i];
+        console.log(`🏦 Processing account ${i + 1}/${trueLayerAccounts.length}: ${tlAccount.display_name} (${tlAccount.account_id})`);
         
-        if (!account) {
-          account = await storage.createAccount({
-            userId,
-            externalId: tlAccount.account_id,
-            name: tlAccount.display_name,
-            type: tlAccount.account_type.toLowerCase(),
-            currency: tlAccount.currency,
-            institutionName: tlAccount.provider.display_name,
-            accountNumber: tlAccount.account_number?.number || 'Hidden',
-            balance: '0',
-          });
-          syncedAccountsCount++;
-        }
-
-        // Get current balance
-        const balance = await trueLayerService.getAccountBalance(tokenData.access_token, tlAccount.account_id);
-        await storage.updateAccount(account.id, {
-          balance: balance.current.toString(),
-          lastSynced: new Date(),
-        });
-
-        // Get transactions (last 3 months)
-        const fromDate = new Date();
-        fromDate.setDate(fromDate.getDate() - 90);
-        console.log(`🔍 Fetching transactions for account ${tlAccount.display_name} from ${fromDate.toISOString().split('T')[0]}`);
-        
-        let transactions: any[] = [];
         try {
-          transactions = await trueLayerService.getAccountTransactions(
-            tokenData.access_token,
-            tlAccount.account_id,
-            fromDate.toISOString().split('T')[0]
-          );
-          console.log(`📊 Found ${transactions.length} transactions for ${tlAccount.display_name}`);
-        } catch (transactionError: any) {
-          console.error(`❌ Failed to fetch transactions for ${tlAccount.display_name}:`, transactionError.message);
-          transactions = []; // Continue with empty array if transactions fail
-        }
-
-        // Save transactions
-        for (const tlTransaction of transactions) {
-          const existingTransaction = await storage.getTransactionByExternalId(tlTransaction.transaction_id);
+          let account = await storage.getAccountByExternalId(tlAccount.account_id);
           
-          if (!existingTransaction) {
-            const category = trueLayerService.categorizeTransaction(tlTransaction);
-            
-            await storage.createTransaction({
-              accountId: account.id,
-              externalId: tlTransaction.transaction_id,
-              amount: tlTransaction.amount.toString(),
-              description: tlTransaction.description,
-              date: new Date(tlTransaction.timestamp),
-              category,
-              categoryConfidence: '0.8',
-              metadata: {
-                merchantName: tlTransaction.merchant_name,
-                transactionType: tlTransaction.transaction_type,
-                trueLayerCategory: tlTransaction.transaction_category,
-              },
+          if (!account) {
+            console.log(`➕ Creating new account: ${tlAccount.display_name}`);
+            account = await storage.createAccount({
+              userId,
+              externalId: tlAccount.account_id,
+              name: tlAccount.display_name,
+              type: tlAccount.account_type.toLowerCase(),
+              currency: tlAccount.currency,
+              institutionName: tlAccount.provider.display_name,
+              accountNumber: tlAccount.account_number?.number || 'Hidden',
+              balance: '0',
             });
-            syncedTransactionsCount++;
+            syncedAccountsCount++;
+            console.log(`✅ Account created: ${account.id}`);
+          } else {
+            console.log(`🔄 Updating existing account: ${tlAccount.display_name}`);
           }
+
+          // Get current balance
+          console.log(`💰 Fetching balance for ${tlAccount.display_name}`);
+          try {
+            const balance = await trueLayerService.getAccountBalance(tokenData.access_token, tlAccount.account_id);
+            await storage.updateAccount(account.id, {
+              balance: balance.current.toString(),
+              lastSynced: new Date(),
+            });
+            console.log(`✅ Balance updated: ${balance.current} ${balance.currency}`);
+          } catch (balanceError: any) {
+            console.error(`❌ Failed to fetch balance for ${tlAccount.display_name}:`, balanceError.message);
+          }
+
+          // Get transactions (last 3 months)
+          const fromDate = new Date();
+          fromDate.setDate(fromDate.getDate() - 90);
+          console.log(`🔍 Fetching transactions for account ${tlAccount.display_name} from ${fromDate.toISOString().split('T')[0]}`);
+          
+          let transactions: any[] = [];
+          try {
+            transactions = await trueLayerService.getAccountTransactions(
+              tokenData.access_token,
+              tlAccount.account_id,
+              fromDate.toISOString().split('T')[0]
+            );
+            console.log(`📊 Found ${transactions.length} transactions for ${tlAccount.display_name}`);
+          } catch (transactionError: any) {
+            console.error(`❌ Failed to fetch transactions for ${tlAccount.display_name}:`, transactionError.message);
+            transactions = []; // Continue with empty array if transactions fail
+          }
+
+          // Save transactions
+          console.log(`💾 Processing ${transactions.length} transactions for ${tlAccount.display_name}`);
+          for (let j = 0; j < transactions.length; j++) {
+            const tlTransaction = transactions[j];
+            try {
+              const existingTransaction = await storage.getTransactionByExternalId(tlTransaction.transaction_id);
+              
+              if (!existingTransaction) {
+                const category = trueLayerService.categorizeTransaction(tlTransaction);
+                
+                await storage.createTransaction({
+                  accountId: account.id,
+                  externalId: tlTransaction.transaction_id,
+                  amount: tlTransaction.amount.toString(),
+                  description: tlTransaction.description,
+                  date: new Date(tlTransaction.timestamp),
+                  category,
+                  categoryConfidence: '0.8',
+                  metadata: {
+                    merchantName: tlTransaction.merchant_name,
+                    transactionType: tlTransaction.transaction_type,
+                    trueLayerCategory: tlTransaction.transaction_category,
+                  },
+                });
+                syncedTransactionsCount++;
+              }
+            } catch (transactionSaveError: any) {
+              console.error(`❌ Failed to save transaction ${j + 1} for ${tlAccount.display_name}:`, transactionSaveError.message);
+            }
+          }
+          console.log(`✅ Completed processing account: ${tlAccount.display_name}`);
+          
+        } catch (accountError: any) {
+          console.error(`❌ Failed to process account ${tlAccount.display_name}:`, accountError.message);
+          console.error('Account error details:', accountError);
         }
       }
 
