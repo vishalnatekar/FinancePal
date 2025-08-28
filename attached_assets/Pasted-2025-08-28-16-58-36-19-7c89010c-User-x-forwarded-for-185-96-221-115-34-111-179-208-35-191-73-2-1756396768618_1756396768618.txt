@@ -1,0 +1,120 @@
+2025-08-28 16:58:36.19
+7c89010c
+User
+"x-forwarded-for": "185.96.221.115, 34.111.179.208, 35.191.73.254,34.30.225.124",
+2025-08-28 16:58:36.19
+7c89010c
+User
+"x-forwarded-host": "myfinancepal.co.uk",
+2025-08-28 16:58:36.19
+7c89010c
+User
+"x-forwarded-proto": "https",
+2025-08-28 16:58:36.19
+7c89010c
+User
+"x-replit-user-bio": "",
+2025-08-28 16:58:36.19
+7c89010c
+User
+"x-replit-user-id": "",
+2025-08-28 16:58:36.19
+7c89010c
+User
+"x-replit-user-name": "",
+2025-08-28 16:58:36.19
+7c89010c
+User
+"x-replit-user-profile-image": "",
+2025-08-28 16:58:36.19
+7c89010c
+User
+"x-replit-user-roles": "",
+2025-08-28 16:58:36.19
+7c89010c
+User
+"x-replit-user-teams": "",
+2025-08-28 16:58:36.19
+7c89010c
+User
+"x-replit-user-url": ""
+2025-08-28 16:58:36.19
+7c89010c
+User
+}
+2025-08-28 16:58:36.19
+7c89010c
+User
+🔍 TrueLayer state parameter: ggq1xd716i8up5dmpex21
+2025-08-28 16:58:36.19
+7c89010c
+User
+🔄 Redirecting to frontend with auth code for client-side user identification
+2025-08-28 16:58:36.19
+7c89010c
+User
+🌐 Redirecting to: https://myfinancepal.co.uk/?connection=success&code=F614FEA77A9F38140264F8B8572A4EF403C60604F5B142808686A4BD96E48C3A&state=ggq1xd716i8up5dmpex21
+2025-08-28 16:58:36.19
+7c89010c
+User
+3:58:36 PM [express] GET /api/banking/callback 302 in 1ms
+2025-08-28 16:58:37.11
+7c89010c
+User
+🔄 Completing banking connection for user: 2ZSK5lXt4phGmbf2VAj6oNpNzx03
+2025-08-28 16:58:37.58
+7c89010c
+User
+🔄 Exchanging code for token...
+2025-08-28 16:58:37.58
+7c89010c
+User
+Code received: F614FEA77A9F38140264...
+2025-08-28 16:58:37.58
+7c89010c
+User
+Redirect URI: https://myfinancepal.co.uk/api/banking/callback
+2025-08-28 16:58:37.59
+7c89010c
+User
+3:58:37 PM [express] GET /api/goals 304 in 459ms :: []
+2025-08-28 16:58:37.60
+7c89010c
+User
+3:58:37 PM [express] GET /api/accounts 304 in 471ms :: []
+2025-08-28 16:58:37.62
+7c89010c
+User
+3:58:37 PM [express] GET /api/transactions 304 in 479ms :: []
+2025-08-28 16:58:37.71
+7c89010c
+User
+3:58:37 PM [express] GET /api/budgets 304 in 574ms :: []
+2025-08-28 16:58:37.93
+7c89010c
+User
+3:58:37 PM [express] GET /api/net-worth 304 in 805ms :: {"current":{"id":"0c5cd3e0-c3d4-4dc4-bb68-d2…
+2025-08-28 16:58:38.02
+7c89010c
+User
+✅ Token exchange successful
+2025-08-28 16:58:38.02
+7c89010c
+User
+Token type: Bearer
+2025-08-28 16:58:38.15
+7c89010c
+User
+🔄 Starting automatic data sync...
+2025-08-28 16:58:38.42
+7c89010c
+User
+3:58:38 PM [express] GET /api/banking/status 200 in 330ms :: {"connected":true,"connections":[{"id":…
+2025-08-28 16:58:39.12
+7c89010c
+User
+📊 Found 2 accounts
+2025-08-28 16:58:43.18
+7c89010c
+User
+3:58:43 PM [express] POST /api/banking/complete-connection 200 in 6069ms :: {"success":true,"message…

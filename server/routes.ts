@@ -793,11 +793,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('🔄 Starting automatic data sync...');
       const trueLayerAccounts = await trueLayerService.getAccounts(tokenData.access_token);
       console.log(`📊 Found ${trueLayerAccounts.length} accounts`);
+      console.log('📋 Account details:', trueLayerAccounts.map(acc => ({
+        id: acc.account_id,
+        name: acc.display_name,
+        type: acc.account_type,
+        provider: acc.provider?.display_name
+      })));
       
       let syncedAccountsCount = 0;
       let syncedTransactionsCount = 0;
 
-      for (let i = 0; i < trueLayerAccounts.length; i++) {
+      try {
+        console.log('🚀 Starting account processing loop...');
+        for (let i = 0; i < trueLayerAccounts.length; i++) {
         const tlAccount = trueLayerAccounts[i];
         console.log(`🏦 Processing account ${i + 1}/${trueLayerAccounts.length}: ${tlAccount.display_name} (${tlAccount.account_id})`);
         
@@ -889,6 +897,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`❌ Failed to process account ${tlAccount.display_name}:`, accountError.message);
           console.error('Account error details:', accountError);
         }
+      }
+      console.log('✅ Finished processing all accounts');
+      } catch (syncError: any) {
+        console.error('❌ Critical error in account sync loop:', syncError.message);
+        console.error('Sync error details:', syncError);
+        console.error('Error stack:', syncError.stack);
       }
 
       await storage.updateBankConnection(bankConnection.id, {
