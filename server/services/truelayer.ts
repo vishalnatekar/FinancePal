@@ -185,6 +185,7 @@ export class TrueLayerService {
     if (to) params.append('to', to);
 
     const url = `${TRUELAYER_BASE_URL}/data/v1/accounts/${accountId}/transactions${params.toString() ? '?' + params.toString() : ''}`;
+    console.log('🌐 Fetching transactions from URL:', url);
     
     const response = await fetch(url, {
       headers: {
@@ -194,10 +195,28 @@ export class TrueLayerService {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ TrueLayer transactions API error:`, {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        url
+      });
       throw new Error(`Failed to fetch transactions for account ${accountId}: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
+    console.log(`📊 Raw transaction response:`, {
+      resultsCount: data.results?.length || 0,
+      hasResults: !!data.results,
+      dataKeys: Object.keys(data)
+    });
+    
+    if (!data.results || !Array.isArray(data.results)) {
+      console.log('⚠️ No results array in transaction response:', data);
+      return [];
+    }
+    
     return data.results.map((transaction: any) => TrueLayerTransactionSchema.parse(transaction));
   }
 

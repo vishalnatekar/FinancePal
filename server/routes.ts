@@ -824,11 +824,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get transactions (last 3 months)
         const fromDate = new Date();
         fromDate.setDate(fromDate.getDate() - 90);
-        const transactions = await trueLayerService.getAccountTransactions(
-          tokenData.access_token,
-          tlAccount.account_id,
-          fromDate.toISOString().split('T')[0]
-        );
+        console.log(`🔍 Fetching transactions for account ${tlAccount.display_name} from ${fromDate.toISOString().split('T')[0]}`);
+        
+        let transactions: any[] = [];
+        try {
+          transactions = await trueLayerService.getAccountTransactions(
+            tokenData.access_token,
+            tlAccount.account_id,
+            fromDate.toISOString().split('T')[0]
+          );
+          console.log(`📊 Found ${transactions.length} transactions for ${tlAccount.display_name}`);
+        } catch (transactionError: any) {
+          console.error(`❌ Failed to fetch transactions for ${tlAccount.display_name}:`, transactionError.message);
+          transactions = []; // Continue with empty array if transactions fail
+        }
 
         // Save transactions
         for (const tlTransaction of transactions) {
