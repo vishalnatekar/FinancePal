@@ -791,14 +791,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Sync bank data immediately
       console.log('🔄 Starting automatic data sync...');
-      const trueLayerAccounts = await trueLayerService.getAccounts(tokenData.access_token);
-      console.log(`📊 Found ${trueLayerAccounts.length} accounts`);
-      console.log('📋 Account details:', trueLayerAccounts.map(acc => ({
-        id: acc.account_id,
-        name: acc.display_name,
-        type: acc.account_type,
-        provider: acc.provider?.display_name
-      })));
+      let trueLayerAccounts;
+      try {
+        trueLayerAccounts = await trueLayerService.getAccounts(tokenData.access_token);
+        console.log(`📊 Found ${trueLayerAccounts.length} accounts`);
+        console.log('📋 Account details:', trueLayerAccounts.map(acc => ({
+          id: acc.account_id,
+          name: acc.display_name,
+          type: acc.account_type,
+          provider: acc.provider?.display_name
+        })));
+      } catch (accountFetchError: any) {
+        console.error('❌ Failed to fetch accounts from TrueLayer:', accountFetchError.message);
+        console.error('Account fetch error details:', accountFetchError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to fetch account data from bank',
+          error: accountFetchError.message
+        });
+      }
       
       let syncedAccountsCount = 0;
       let syncedTransactionsCount = 0;

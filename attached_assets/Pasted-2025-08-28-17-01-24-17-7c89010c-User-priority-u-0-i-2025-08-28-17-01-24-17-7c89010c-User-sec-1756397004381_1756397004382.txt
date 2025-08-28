@@ -1,0 +1,131 @@
+2025-08-28 17:01:24.17
+7c89010c
+User
+"priority": "u=0, i",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"sec-ch-ua": "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"Google Chrome\";v=\"138\"",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"sec-ch-ua-mobile": "?0",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"sec-fetch-dest": "document",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"sec-fetch-mode": "navigate",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"sec-fetch-site": "cross-site",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"traceparent": "00-7738cbe08a443e6ebf9885e494e6f76b-48527af6e0d3e8ce-00",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"upgrade-insecure-requests": "1",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"x-cloud-trace-context": "7738cbe08a443e6ebf9885e494e6f76b/5211362919573612750",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"x-forwarded-host": "myfinancepal.co.uk",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"x-forwarded-proto": "https",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"x-replit-user-bio": "",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"x-replit-user-id": "",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"x-replit-user-name": "",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"x-replit-user-profile-image": "",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"x-replit-user-roles": "",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"x-replit-user-teams": "",
+2025-08-28 17:01:24.17
+7c89010c
+User
+"x-replit-user-url": ""
+2025-08-28 17:01:24.17
+7c89010c
+User
+}
+2025-08-28 17:01:24.17
+7c89010c
+User
+🔍 TrueLayer state parameter: 8c9c0h3mlw30ciivcb1mvjm
+2025-08-28 17:01:25.60
+7c89010c
+User
+4:01:25 PM [express] GET /api/transactions 304 in 468ms :: []
+2025-08-28 17:01:25.62
+7c89010c
+User
+🔄 Exchanging code for token...
+2025-08-28 17:01:25.62
+7c89010c
+User
+Code received: C0C59A5D10603029A701...
+2025-08-28 17:01:25.62
+7c89010c
+User
+Redirect URI: https://myfinancepal.co.uk/api/banking/callback
+2025-08-28 17:01:25.70
+7c89010c
+User
+4:01:25 PM [express] GET /api/budgets 304 in 572ms :: []
+2025-08-28 17:01:25.95
+7c89010c
+User
+4:01:25 PM [express] GET /api/net-worth 304 in 797ms :: {"current":{"id":"0c5cd3e0-c3d4-4dc4-bb68-d2…
+2025-08-28 17:01:26.06
+7c89010c
+User
+Token type: Bearer
+2025-08-28 17:01:26.19
+7c89010c
+User
+🔄 Starting automatic data sync...
+2025-08-28 17:01:27.27
+7c89010c
+User
+📊 Found 2 accounts
+2025-08-28 17:01:27.63
+7c89010c
+User
+4:01:27 PM [express] GET /api/accounts 304 in 2477ms :: []
+2025-08-28 17:01:27.63
+7c89010c
+User
+4:01:27 PM [express] GET /api/goals 304 in 2484ms :: []
+
+Wrap
+
+Colors
+13s
+ • 
+3 minutes ago
