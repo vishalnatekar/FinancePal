@@ -692,7 +692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/banking/connect", requireFirebaseAuth, async (req: any, res) => {
     try {
       // Use the whitelisted redirect URI from TrueLayer console
-      const redirectUri = 'https://myfinancepal.co.uk/api/banking/callback';
+      const redirectUri = process.env.TRUELAYER_REDIRECT_URI || 'https://myfinancepal.co.uk/api/banking/callback';
       console.log('🌐 Using whitelisted callback URL:', redirectUri);
       const authUrl = trueLayerService.generateAuthUrl(redirectUri);
       res.json({ authUrl });
@@ -743,7 +743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Use the whitelisted redirect URI from TrueLayer console  
-      const redirectUri = 'https://myfinancepal.co.uk/api/banking/callback';
+      const redirectUri = process.env.TRUELAYER_REDIRECT_URI || 'https://myfinancepal.co.uk/api/banking/callback';
       
       console.log('🔄 Exchanging code for token...');
       console.log('Code received:', code.substring(0, 20) + '...');

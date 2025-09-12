@@ -53,7 +53,11 @@ app.use((req, res, next) => {
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
-    serveStatic(app);
+    // In production, only serve the client if explicitly enabled.
+    // On Render we run API-only and proxy the frontend via Vercel.
+    if (process.env.SERVE_CLIENT === "true") {
+      serveStatic(app);
+    }
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

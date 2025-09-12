@@ -73,12 +73,14 @@ export async function setupVite(app: Express, server: Server) {
 export function serveStatic(app: Express) {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-  const distPath = path.resolve(__dirname, "public");
+  // Try repo-root/dist (Vite build output) relative to compiled server
+  const distPath = path.resolve(__dirname, "..", "dist");
 
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+    console.warn(
+      `Static assets directory not found at ${distPath}. Skipping static serve.`,
     );
+    return;
   }
 
   app.use(express.static(distPath));

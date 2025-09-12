@@ -3,6 +3,25 @@ import { auth } from "@/firebase";
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 
 export function useFirebaseAuth() {
+  // If Firebase isn't configured, avoid crashing the app
+  if (!auth) {
+    const notConfiguredError = new Error(
+      "Firebase is not configured. Missing VITE_FIREBASE_* env vars.",
+    );
+    return {
+      user: null as any,
+      loading: false,
+      error: notConfiguredError,
+      isAuthenticated: false,
+      signInWithGoogle: () => {
+        alert(
+          "Authentication is not available: Firebase is not configured on this deployment.",
+        );
+      },
+      logout: () => {},
+    };
+  }
+
   const [user, loading, error] = useAuthState(auth);
 
   const signInWithGoogle = async () => {
