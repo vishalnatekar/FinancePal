@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { log } from "./vite";
+import fs from "fs";
+import path from "path";
 
 const app = express();
 app.use(express.json());
@@ -51,12 +53,24 @@ app.use((req, res, next) => {
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
   if (app.get("env") === "development") {
+    // Dynamically import to avoid bundling 'vite' into prod output
+    const { setupVite } = await import("./vite");
     await setupVite(app, server);
   } else {
     // In production, only serve the client if explicitly enabled.
     // On Render we run API-only and proxy the frontend via Vercel.
     if (process.env.SERVE_CLIENT === "true") {
-      serveStatic(app);
+      // Lightweight static server so we don't import vite in prod
+      const distPath = path.resolve(import.meta.dirname, "public");
+      if (!fs.existsSync(distPath)) {
+        throw new Error(
+          `Could not find the build directory: ${distPath}, make sure to build the client first`,
+        );
+      }
+      app.use(express.static(distPath));
+      app.use("*", (_req, res) => {
+        res.sendFile(path.resolve(distPath, "index.html"));
+      });
     }
   }
 
