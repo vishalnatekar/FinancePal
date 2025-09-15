@@ -3,10 +3,3 @@
     { "source": "/api/(.*)", "destination": "https://financepal-lt7l.onrender.com/api/$1" }
   ]
 }
-{
-  "routes": [
-    { "src": "/api/(.*)", "dest": "https://YOUR-RENDER-API-URL/api/$1" },
-    { "handle": "filesystem" },
-    { "src": "/.*", "dest": "/index.html" }
-  ]
-}

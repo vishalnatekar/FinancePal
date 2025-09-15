@@ -1,18 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import fs from "fs";
-import path from "path";
-
-// Simple logger used in both dev and prod
-function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
+import { setupVite, log } from "./vite";
 
 const app = express();
 app.use(express.json());
@@ -59,26 +47,10 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // In production, only serve the client if explicitly enabled.
-  // On Render we run API-only and proxy the frontend via Vercel.
-  if (process.env.SERVE_CLIENT === "true") {
-    // Lightweight static server so we don't import vite in prod
-    const distPath = path.resolve(import.meta.dirname, "public");
-    if (!fs.existsSync(distPath)) {
-      throw new Error(
-        `Could not find the build directory: ${distPath}, make sure to build the client first`,
-      );
-    }
-    app.use(express.static(distPath));
-    app.use("*", (_req, res) => {
-      res.sendFile(path.resolve(distPath, "index.html"));
-    });
-  }
+  // Setup Vite for development
+  await setupVite(app, server);
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
   server.listen({
     port,
