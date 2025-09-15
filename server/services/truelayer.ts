@@ -1,7 +1,15 @@
 import { z } from 'zod';
 
-// TrueLayer API configuration - use live environment by default
-const isLive = process.env.TRUELAYER_CLIENT_ID_LIVE && process.env.TRUELAYER_CLIENT_SECRET_LIVE;
+// TrueLayer API configuration
+// Determine environment using (in priority order):
+// 1) Explicit flag TRUELAYER_ENV=live or TRUELAYER_USE_LIVE=true
+// 2) Presence of LIVE-specific credentials
+// 3) Fallback: sandbox
+const explicitLiveFlag =
+  (process.env.TRUELAYER_ENV || '').toLowerCase() === 'live' ||
+  (process.env.TRUELAYER_USE_LIVE || '').toLowerCase() === 'true';
+const hasLiveSpecificCreds = !!(process.env.TRUELAYER_CLIENT_ID_LIVE && process.env.TRUELAYER_CLIENT_SECRET_LIVE);
+const isLive = explicitLiveFlag || hasLiveSpecificCreds;
 const TRUELAYER_BASE_URL = isLive ? 'https://api.truelayer.com' : 'https://api.truelayer-sandbox.com';
 const TRUELAYER_AUTH_URL = isLive ? 'https://auth.truelayer.com' : 'https://auth.truelayer-sandbox.com';
 
@@ -53,22 +61,39 @@ export class TrueLayerService {
   private clientSecret: string;
 
   constructor() {
-    // Use live credentials if available, otherwise fall back to sandbox
-    if (process.env.TRUELAYER_CLIENT_ID_LIVE && process.env.TRUELAYER_CLIENT_SECRET_LIVE) {
-      this.clientId = process.env.TRUELAYER_CLIENT_ID_LIVE;
-      this.clientSecret = process.env.TRUELAYER_CLIENT_SECRET_LIVE;
-    } else if (process.env.TRUELAYER_CLIENT_ID && process.env.TRUELAYER_CLIENT_SECRET) {
-      this.clientId = process.env.TRUELAYER_CLIENT_ID;
-      this.clientSecret = process.env.TRUELAYER_CLIENT_SECRET;
+    // Credential selection rules:
+    // - If in live mode (isLive true), prefer LIVE-specific vars; otherwise use generic TRUELAYER_CLIENT_ID/SECRET (allowing users to place live creds there).
+    // - If in sandbox mode, use generic TRUELAYER_CLIENT_ID/SECRET (sandbox creds) if present; otherwise fall back to LIVE vars if those are the only ones set.
+    if (isLive) {
+      if (process.env.TRUELAYER_CLIENT_ID_LIVE && process.env.TRUELAYER_CLIENT_SECRET_LIVE) {
+        this.clientId = process.env.TRUELAYER_CLIENT_ID_LIVE;
+        this.clientSecret = process.env.TRUELAYER_CLIENT_SECRET_LIVE;
+      } else if (process.env.TRUELAYER_CLIENT_ID && process.env.TRUELAYER_CLIENT_SECRET) {
+        // Allow using live creds in generic vars when LIVE-specific vars aren't provided
+        this.clientId = process.env.TRUELAYER_CLIENT_ID;
+        this.clientSecret = process.env.TRUELAYER_CLIENT_SECRET;
+      } else {
+        throw new Error('TrueLayer live credentials not found. Set TRUELAYER_CLIENT_ID/TRUELAYER_CLIENT_SECRET or TRUELAYER_CLIENT_ID_LIVE/TRUELAYER_CLIENT_SECRET_LIVE.');
+      }
     } else {
-      throw new Error('TrueLayer credentials not found. Please add TRUELAYER_CLIENT_ID_LIVE/TRUELAYER_CLIENT_SECRET_LIVE or TRUELAYER_CLIENT_ID/TRUELAYER_CLIENT_SECRET to your environment variables.');
+      if (process.env.TRUELAYER_CLIENT_ID && process.env.TRUELAYER_CLIENT_SECRET) {
+        // Sandbox creds placed in generic vars
+        this.clientId = process.env.TRUELAYER_CLIENT_ID;
+        this.clientSecret = process.env.TRUELAYER_CLIENT_SECRET;
+      } else if (process.env.TRUELAYER_CLIENT_ID_LIVE && process.env.TRUELAYER_CLIENT_SECRET_LIVE) {
+        // Fallback to LIVE creds even if sandbox not configured (useful for environments with only live creds)
+        this.clientId = process.env.TRUELAYER_CLIENT_ID_LIVE;
+        this.clientSecret = process.env.TRUELAYER_CLIENT_SECRET_LIVE;
+      } else {
+        throw new Error('TrueLayer credentials not found. Set TRUELAYER_CLIENT_ID/TRUELAYER_CLIENT_SECRET for sandbox or LIVE equivalents.');
+      }
     }
     
     console.log('TrueLayer Service initialized:');
-    console.log('- Client ID:', this.clientId);
     console.log('- Using live environment:', isLive);
     console.log('- Auth URL base:', TRUELAYER_AUTH_URL);
     console.log('- API URL base:', TRUELAYER_BASE_URL);
+    console.log('- Credential source:', hasLiveSpecificCreds ? 'LIVE-specific envs' : 'generic envs');
   }
 
   /**

@@ -1051,7 +1051,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Debug endpoint for TrueLayer URL (remove in production)
   app.get("/api/banking/debug", (req: any, res) => {
     try {
-      const redirectUri = `${req.protocol}://${req.get('host')}/api/banking/callback`;
+      const scheme = req.get('x-forwarded-proto') || 'https';
+      const host = req.get('x-forwarded-host') || req.get('host');
+      const redirectUri = `${scheme}://${host}/api/banking/callback`;
       const authUrl = trueLayerService.generateAuthUrl(redirectUri);
       const isLive = process.env.TRUELAYER_CLIENT_ID_LIVE && process.env.TRUELAYER_CLIENT_SECRET_LIVE;
       res.json({ 
